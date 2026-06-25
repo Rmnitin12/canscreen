@@ -1,0 +1,858 @@
+// ═══════════════════════════════════════════════════════════════
+//  CANSCREEN — Formula Engine
+// ═══════════════════════════════════════════════════════════════
+
+// ── UV index lookup by city ───────────────────────────────────────
+const UV_CITY = {
+  'san francisco': 8, 'sf': 8, 'los angeles': 9, 'la': 9, 'miami': 11,
+  'new york': 7, 'nyc': 7, 'chicago': 6, 'seattle': 5, 'portland': 5,
+  'phoenix': 11, 'denver': 9, 'austin': 9, 'houston': 9, 'atlanta': 8,
+  'boston': 6, 'honolulu': 11, 'hawaii': 11, 'dallas': 9,
+  'london': 4, 'paris': 5, 'berlin': 4, 'amsterdam': 4, 'rome': 8,
+  'barcelona': 9, 'madrid': 9, 'lisbon': 9, 'athens': 10,
+  'dubai': 12, 'abu dhabi': 12, 'riyadh': 11,
+  'tokyo': 8, 'osaka': 8, 'seoul': 7, 'beijing': 8, 'shanghai': 8,
+  'hong kong': 10, 'singapore': 11, 'bangkok': 12, 'jakarta': 12,
+  'sydney': 11, 'melbourne': 9, 'auckland': 10,
+  'toronto': 6, 'vancouver': 5, 'montreal': 5,
+  'mumbai': 11, 'delhi': 10, 'bangalore': 10, 'chennai': 11,
+  'cape town': 10, 'nairobi': 11, 'lagos': 11,
+  'mexico city': 10, 'cancun': 11, 'bogota': 11, 'lima': 10, 'sao paulo': 10,
+};
+
+function getUVForLocation(loc) {
+  const key = loc.toLowerCase().replace(/,.*/, '').trim();
+  for (const [city, uv] of Object.entries(UV_CITY)) {
+    if (key.includes(city) || city.includes(key)) return uv;
+  }
+  return 7; // default moderate
+}
+
+function uvLabel(uv) {
+  if (uv <= 2)  return 'Low';
+  if (uv <= 5)  return 'Moderate';
+  if (uv <= 7)  return 'High';
+  if (uv <= 10) return 'Very High';
+  return 'Extreme';
+}
+
+// ── Season detection ──────────────────────────────────────────────
+const MONTHS_TO_SEASON = [
+  'winter','winter','spring','spring','spring','summer',
+  'summer','summer','autumn','autumn','autumn','winter'
+];
+const SEASON_SHIPS = { winter: 'Ships Dec', spring: 'Ships Mar', summer: 'Ships Jun · Current', autumn: 'Ships Sep' };
+const SEASON_ICONS = { winter: '❄️', spring: '🌸', summer: '☀️', autumn: '🍂' };
+
+function getCurrentSeason() {
+  return MONTHS_TO_SEASON[new Date().getMonth()];
+}
+
+// ── Profile reader ────────────────────────────────────────────────
+function getProfile() {
+  const fitzEl  = document.querySelector('.fitz-swatch.active');
+  const fitzType = fitzEl ? fitzEl.dataset.type : 'II';
+  const fitzNum  = { I:1, II:2, III:3, IV:4, V:5, VI:6 }[fitzType] || 2;
+
+  const skinTypeEl = document.querySelector('[data-group="skin-type"] .chip.active');
+  const skinType   = skinTypeEl ? skinTypeEl.dataset.val : 'normal';
+
+  const sensitivity = parseInt(document.getElementById('sensitivitySlider').value, 10);
+
+  const concerns = [...document.querySelectorAll('[data-group="concerns"] .chip.active')]
+    .map(c => c.dataset.val);
+
+  const location = document.getElementById('locationInput').value || 'San Francisco, CA';
+  const uvIndex  = getUVForLocation(location);
+
+  const optMineral = document.getElementById('optMineral').checked;
+  const optSweat   = document.getElementById('optSweat').checked;
+  const optMatte   = document.getElementById('optMatte').checked;
+  const optTinted  = document.getElementById('optTinted').checked;
+
+  return { fitzType, fitzNum, skinType, sensitivity, concerns, location, uvIndex,
+           options: { mineral: optMineral, sweat: optSweat, matte: optMatte, tinted: optTinted } };
+}
+
+// ── SPF calculation ───────────────────────────────────────────────
+function calcSPF(fitzNum, uvIndex, sensitivity) {
+  // High UV or very fair/sensitive → 50+
+  if (uvIndex >= 9 || fitzNum <= 1 || sensitivity >= 4) return '50+';
+  // Moderate UV and medium skin → 50
+  if (uvIndex >= 6 || fitzNum <= 3) return '50';
+  // Lower UV and darker skin → 30
+  return '30';
+}
+
+// ── Ingredient explain generator ──────────────────────────────────
+function explain(id, p, extra = {}) {
+  const { fitzType, skinType, sensitivity, concerns, location, uvIndex } = p;
+  const city = location.replace(/,.*/, '');
+  const sensLabel = ['', 'minimal', 'low', 'moderate', 'high', 'very high'][sensitivity] || 'moderate';
+
+  const texts = {
+    zinc: `Your skin is <strong>Fitzpatrick ${fitzType}</strong> with <strong>${sensLabel} sensitivity</strong>.
+      Zinc Oxide is a physical blocker that sits on the skin surface rather than absorbing into it —
+      ${sensitivity >= 4 ? 'essential for reactive and sensitive skin that can\'t tolerate chemical UV filters' : 'delivering clean, reef-safe broad-spectrum coverage'}.
+      At <strong>${extra.pct || 20}%</strong> it covers both UVA and UVB without penetration.`,
+
+    tio2: `<strong>Extra mineral option selected</strong> with a lighter skin tone (Fitzpatrick ${fitzType}).
+      Titanium Dioxide provides strong UVB coverage at smaller particle sizes than zinc alone,
+      meaning less white cast while keeping the formula 100% free of chemical UV filters.`,
+
+    ha: `Your profile shows <strong>${skinType} skin type</strong>.
+      Mineral formulas can feel dry or chalky without a humectant.
+      Hyaluronic Acid draws moisture from the air into the skin, giving the formula a
+      lightweight, dewy finish that won't highlight ${skinType === 'dry' ? 'dry patches or flaking' : 'tightness or rough texture'}.`,
+
+    ceramides: `<strong>Dry skin type</strong> has a compromised lipid barrier, causing transepidermal water loss.
+      Ceramides are the skin's own structural lipids — replenishing them seals the barrier,
+      locking moisture in and keeping UV-sensitising environmental irritants out all day.`,
+
+    squalane: `<strong>Combination skin</strong> needs targeted hydration without triggering oiliness.
+      Squalane is identical to the skin's own sebum component — it hydrates dry zones
+      without feeding the oily T-zone, making it the ideal emollient for this skin type.`,
+
+    vitc: `<strong>${city}</strong>'s UV index of <strong>${uvIndex} (${uvLabel(uvIndex)})</strong> triggers
+      significant free-radical damage even through SPF.
+      Vitamin C at ${extra.pct || 10}% neutralises those radicals and inhibits tyrosinase enzyme activity —
+      a two-pronged attack on ${concerns.includes('aging') ? 'photoaging and collagen breakdown' : 'pigmentation and uneven tone'}.`,
+
+    nia_pigment: `You flagged <strong>pigmentation</strong> as a concern.
+      Niacinamide suppresses melanosome transfer between melanocytes and keratinocytes,
+      reducing the appearance of dark spots and uneven tone over 4–8 weeks.
+      At 5% it is clinically proven effective and sits below the irritation threshold for all skin types.`,
+
+    nia_redness: `<strong>Redness-prone skin</strong> benefits from Niacinamide's dual action:
+      it reduces the inflammatory prostaglandins that cause persistent redness,
+      and strengthens the compromised skin barrier that makes skin reactive in the first place.`,
+
+    nia_acne: `<strong>Acne-prone skin</strong> needs sebum regulation without stripping.
+      Niacinamide at 4% is shown to reduce sebum excretion by up to 52% in clinical studies,
+      shrink the appearance of pores, and provide anti-inflammatory action without the irritation of retinoids.`,
+
+    nia_default: `Niacinamide is included as a general barrier-support and skin-evening active.
+      At 4% it improves overall clarity, reduces mild redness, and works synergistically
+      with both the mineral filters and any actives in this formula.`,
+
+    centella: `<strong>Redness-prone skin</strong> is in a cycle of barrier damage and inflammation.
+      Centella Asiatica's triterpenoids — asiaticoside and madecassoside — interrupt that cycle
+      by calming the inflammatory cascade and accelerating epidermal barrier repair.
+      Clinically shown to measurably reduce visible redness in 4–6 weeks.`,
+
+    peptides: `UV exposure activates matrix metalloproteinases (MMPs) that break down collagen.
+      Matrixyl peptides signal fibroblasts to produce new collagen in response,
+      directly counteracting <strong>photoaging</strong> at the cellular level —
+      turning your daily SPF into an active anti-aging treatment.`,
+
+    arbutin: `For <strong>pigmentation</strong> alongside other concerns, Alpha-Arbutin is a gentler
+      brightening alternative to Vitamin C. It inhibits tyrosinase with lower irritation risk,
+      making it compatible with acne-prone or sensitive skin types that can't tolerate ascorbic acid.`,
+
+    sal: `<strong>Acne-prone skin</strong> is at risk of congestion beneath occlusive sunscreen.
+      Salicylic Acid at 0.5% is a BHA that exfoliates inside the pore lining,
+      preventing the trapped sebum and dead cells that sunscreen can accelerate —
+      without the irritation of higher concentrations.`,
+
+    silica: `<strong>${p.options.matte ? 'Matte finish selected' : 'Oily skin type'}</strong> requires
+      active oil control throughout the day. Silica microspheres physically absorb sebum and scatter light,
+      creating an instant soft-focus blur effect and keeping the formula from turning shiny by midday.`,
+
+    film: `<strong>Sweat resistant option selected.</strong> Standard mineral sunscreens wash off within
+      40 minutes of activity. Film-forming polymers create a flexible, breathable network over the skin
+      that maintains SPF integrity through 80 minutes of water or sweat exposure — lab-verified to
+      standard ISO 24444.`,
+  };
+
+  return texts[id] || 'This ingredient was selected based on your skin profile and concerns.';
+}
+
+// ── Core formula builder ──────────────────────────────────────────
+function buildFormula(p) {
+  const { fitzNum, fitzType, skinType, sensitivity, concerns, uvIndex, options } = p;
+  const spf = calcSPF(fitzNum, uvIndex, sensitivity);
+
+  // Finish
+  let finish;
+  if (options.matte)              finish = 'Mattifying gel-cream';
+  else if (skinType === 'oily')   finish = 'Lightweight oil-free fluid';
+  else if (skinType === 'dry')    finish = 'Rich hydrating lotion';
+  else if (skinType === 'combo')  finish = 'Balancing fluid';
+  else                            finish = 'Lightweight fluid';
+  if (options.sweat) finish += ' · sport';
+  if (options.tinted) finish += ' · tinted';
+
+  const ings = [];
+
+  // ── Zinc Oxide (always) ──
+  const zincPct = spf === '50+' ? (sensitivity >= 4 ? 22 : 20)
+                : spf === '50'  ? 18 : 15;
+  const zincBar = spf === '50+' ? 88 : spf === '50' ? 72 : 58;
+  ings.push({
+    id: 'zinc', name: `Zinc Oxide ${zincPct}%`,
+    reason: `Broad-spectrum mineral filter · ${sensitivity >= 4 ? 'non-reactive, skin-safe' : 'reef-safe coverage'}`,
+    bar: zincBar, explainId: 'zinc', explainExtra: { pct: zincPct },
+  });
+
+  // ── Titanium Dioxide (extra mineral + lighter skin) ──
+  if (options.mineral && fitzNum <= 3) {
+    ings.push({
+      id: 'tio2', name: 'Titanium Dioxide 8%',
+      reason: 'Secondary mineral filter · enhanced UVB · no white cast',
+      bar: 38, explainId: 'tio2',
+    });
+  }
+
+  // ── Skin type base ingredients ──
+  if (skinType === 'dry' || concerns.includes('dryness')) {
+    ings.push({
+      id: 'ha', name: 'Hyaluronic Acid 1.5%',
+      reason: 'Humectant · moisture retention · prevents mineral dryness',
+      bar: 28, explainId: 'ha',
+    });
+  }
+  if (skinType === 'dry') {
+    ings.push({
+      id: 'ceramides', name: 'Ceramide Complex 2%',
+      reason: 'Barrier lipid repair · seals moisture · reduces reactivity',
+      bar: 22, explainId: 'ceramides',
+    });
+  }
+  if (skinType === 'combo') {
+    ings.push({
+      id: 'squalane', name: 'Squalane 1%',
+      reason: 'Targeted emollient · hydrates dry zones · non-comedogenic',
+      bar: 16, explainId: 'squalane',
+    });
+  }
+
+  // ── Concern-based ingredients ──
+  const hasPigment   = concerns.includes('pigmentation');
+  const hasAging     = concerns.includes('aging');
+  const hasRedness   = concerns.includes('redness');
+  const hasAcne      = concerns.includes('acne');
+  const hasDryness   = concerns.includes('dryness');
+
+  // Vitamin C — pigmentation or aging, but not acne-prone
+  if ((hasPigment || hasAging) && !hasAcne) {
+    const vitcPct = hasAging && hasPigment ? 12 : hasAging ? 15 : 10;
+    ings.push({
+      id: 'vitc', name: `Vitamin C (L-AA) ${vitcPct}%`,
+      reason: `Antioxidant · ${hasAging ? 'collagen defence' : 'pigmentation correction'} · UV radical quencher`,
+      bar: Math.round(vitcPct * 3.5), explainId: 'vitc', explainExtra: { pct: vitcPct },
+    });
+  }
+
+  // Alpha-Arbutin — pigmentation with acne (gentler brightener)
+  if (hasPigment && hasAcne) {
+    ings.push({
+      id: 'arbutin', name: 'Alpha-Arbutin 2%',
+      reason: 'Tyrosinase inhibitor · brightening · acne-safe alternative to Vitamin C',
+      bar: 24, explainId: 'arbutin',
+    });
+  }
+
+  // Niacinamide — present in most formulas, purpose shifts by concern
+  if (hasPigment && !hasAcne) {
+    ings.push({
+      id: 'nia', name: 'Niacinamide 5%',
+      reason: 'Melanosome transfer inhibitor · evens skin tone · barrier support',
+      bar: 52, explainId: 'nia_pigment',
+    });
+  } else if (hasRedness) {
+    ings.push({
+      id: 'nia', name: 'Niacinamide 4%',
+      reason: 'Anti-inflammatory · reduces redness · barrier strengthening',
+      bar: 44, explainId: 'nia_redness',
+    });
+  } else if (hasAcne) {
+    ings.push({
+      id: 'nia', name: 'Niacinamide 4%',
+      reason: 'Sebum regulation · pore minimising · anti-inflammatory',
+      bar: 44, explainId: 'nia_acne',
+    });
+  } else {
+    ings.push({
+      id: 'nia', name: 'Niacinamide 4%',
+      reason: 'Barrier support · skin tone evenness · general skin health',
+      bar: 38, explainId: 'nia_default',
+    });
+  }
+
+  // Centella — redness
+  if (hasRedness) {
+    ings.push({
+      id: 'centella', name: 'Centella Asiatica 3%',
+      reason: 'Triterpenoid complex · calms reactivity · accelerates barrier repair',
+      bar: 32, explainId: 'centella',
+    });
+  }
+
+  // Peptides — aging
+  if (hasAging) {
+    ings.push({
+      id: 'peptides', name: 'Matrixyl 3000™ 5%',
+      reason: 'Collagen stimulation · photoaging defence · firming',
+      bar: 30, explainId: 'peptides',
+    });
+  }
+
+  // Salicylic Acid — acne
+  if (hasAcne) {
+    ings.push({
+      id: 'sal', name: 'Salicylic Acid 0.5%',
+      reason: 'BHA · pore exfoliation · prevents SPF-related congestion',
+      bar: 14, explainId: 'sal',
+    });
+  }
+
+  // Silica — matte or oily
+  if (options.matte || skinType === 'oily') {
+    ings.push({
+      id: 'silica', name: 'Silica Microspheres 3%',
+      reason: 'Oil absorption · mattifying · soft-focus blur',
+      bar: 24, explainId: 'silica',
+    });
+  }
+
+  // Film former — sweat resistant
+  if (options.sweat) {
+    ings.push({
+      id: 'film', name: 'Film-Forming Polymer 2%',
+      reason: '80-min water & sweat resistance · sport-grade adhesion',
+      bar: 18, explainId: 'film',
+    });
+  }
+
+  // Limit to 6 most impactful ingredients for readability
+  const sorted = ings.sort((a, b) => b.bar - a.bar).slice(0, 6);
+
+  return { spf, finish, ingredients: sorted };
+}
+
+// ── Seasonal formula builder ──────────────────────────────────────
+function buildSeasonalFormulas(profile, baseSpf) {
+  const { fitzNum, uvIndex } = profile;
+  const seasonUV = {
+    winter: Math.max(2, uvIndex - 5),
+    spring: Math.max(3, uvIndex - 2),
+    summer: uvIndex,
+    autumn: Math.max(3, uvIndex - 3),
+  };
+  const finishes = { winter: 'Rich cream', spring: 'Fluid lotion', autumn: 'Balancing gel' };
+
+  return Object.fromEntries(
+    ['winter','spring','summer','autumn'].map(s => [s, {
+      spf:    calcSPF(fitzNum, seasonUV[s], profile.sensitivity),
+      uv:     seasonUV[s],
+      finish: finishes[s] || profile.options.matte ? 'Mattifying gel' : 'Lightweight fluid',
+    }])
+  );
+}
+
+// ── DOM renderer ──────────────────────────────────────────────────
+function renderFormula(p, formula, seasonals) {
+  const { fitzType, skinType, sensitivity, concerns, location, uvIndex, options } = p;
+  const { spf, finish, ingredients } = formula;
+  const city = location.replace(/,.*/, '');
+  const sensLabel = ['','Minimal','Low','Moderate','High','Very high'][sensitivity];
+  const currentSeason = getCurrentSeason();
+
+  // Formula ID
+  const fid = '#CS-' + (Math.floor(1000 + Math.random() * 9000));
+  document.querySelector('.formula-id').textContent = fid;
+
+  // Tube & meta
+  document.querySelector('.tube-spf').textContent = `SPF ${spf}`;
+  document.querySelector('.spf-value').textContent = `SPF ${spf}`;
+  document.querySelectorAll('.meta-value')[1].textContent = finish.split(' · ')[0];
+  document.querySelectorAll('.meta-value')[2].textContent =
+    currentSeason.charAt(0).toUpperCase() + currentSeason.slice(1) + ' 2026';
+
+  // Ingredient list
+  const list = document.querySelector('.ingredient-list');
+  list.innerHTML = ingredients.map(ing => `
+    <div class="ingredient-row">
+      <div class="ing-header">
+        <div class="ing-info">
+          <span class="ing-name">${ing.name}</span>
+          <span class="ing-reason">${ing.reason}</span>
+        </div>
+        <button class="ing-why-btn" data-ing="${ing.id}">Why?</button>
+      </div>
+      <div class="ing-bar"><div class="ing-fill" style="width:${ing.bar}%"></div></div>
+      <div class="ing-explain" id="explain-${ing.id}">
+        ${explain(ing.explainId, p, ing.explainExtra || {})}
+      </div>
+    </div>
+  `).join('');
+
+  // Re-attach ingredient why button listeners
+  list.querySelectorAll('.ing-why-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const panel = document.getElementById(`explain-${btn.dataset.ing}`);
+      const isOpen = panel.classList.contains('open');
+      list.querySelectorAll('.ing-explain').forEach(ep => ep.classList.remove('open'));
+      list.querySelectorAll('.ing-why-btn').forEach(b => { b.classList.remove('active'); b.textContent = 'Why?'; });
+      if (!isOpen) { panel.classList.add('open'); btn.classList.add('active'); btn.textContent = 'Got it'; }
+    });
+  });
+
+  // UV breakdown card
+  const uvCard = document.querySelector('.uv-card');
+  uvCard.querySelector('.breakdown-label').textContent = `UV Index · ${city}`;
+  uvCard.querySelector('.breakdown-value').textContent = `${uvIndex} — ${uvLabel(uvIndex)}`;
+  uvCard.querySelector('.breakdown-note').textContent =
+    `Peak hours 10am – 3pm · SPF ${spf} recommended`;
+
+  // Skin breakdown card
+  const skinCard = document.querySelector('.skin-card');
+  const riskLabel = fitzType <= 'II' ? 'Elevated sun damage risk' : fitzType <= 'IV' ? 'Moderate sun damage risk' : 'Lower burn risk';
+  const filterPref = (sensitivity >= 4 || options.mineral) ? 'mineral filter required' : 'mineral filter preferred';
+  skinCard.querySelector('.breakdown-value').textContent =
+    `Fitzpatrick ${fitzType} · ${skinType.charAt(0).toUpperCase()+skinType.slice(1)} · ${sensLabel} sensitivity`;
+  skinCard.querySelector('.breakdown-note').textContent =
+    `${riskLabel} · ${filterPref}`;
+
+  // Season adjustment card
+  const seasonCard = document.querySelector('.season-card');
+  const nextSeasonMap = { winter:'spring', spring:'summer', summer:'autumn', autumn:'winter' };
+  const nextSeason = nextSeasonMap[currentSeason];
+  const nextSpf = seasonals[nextSeason].spf;
+  const nextShipMap = { spring:'March 2027', summer:'June 2026', autumn:'September 2026', winter:'December 2026' };
+  seasonCard.querySelector('.breakdown-value').textContent =
+    `${currentSeason.charAt(0).toUpperCase()+currentSeason.slice(1)} → ${nextSeason.charAt(0).toUpperCase()+nextSeason.slice(1)} reformulation`;
+  seasonCard.querySelector('.breakdown-note').textContent =
+    `Next shipment ${nextShipMap[nextSeason]} · SPF ${spf} → SPF ${nextSpf}`;
+
+  // Season timeline
+  const blocks = document.querySelectorAll('.season-block');
+  const ORDER = ['winter','spring','summer','autumn'];
+  blocks.forEach((block, i) => {
+    const s = ORDER[i];
+    const sd = seasonals[s];
+    const uvPct = Math.round((sd.uv / 13) * 100);
+
+    block.querySelector('.season-spf').textContent = `SPF ${sd.spf}`;
+    block.querySelector('.season-spf').className =
+      'season-spf ' + (sd.spf === '30' ? 'spf-low' : sd.spf === '50' ? 'spf-mid' : 'spf-high');
+    block.querySelector('.season-uv-fill').style.height = uvPct + '%';
+    block.querySelector('.season-uv-val').textContent = sd.uv;
+    block.querySelector('.season-ship').textContent = SEASON_SHIPS[s];
+
+    block.classList.toggle('season-active', s === currentSeason);
+  });
+
+  // Scroll to result
+  document.getElementById('result').scrollIntoView({ behavior: 'smooth' });
+}
+
+// ─────────────────────────────────────────────────────────────────
+//  ANALYSIS OVERLAY ANIMATION
+// ─────────────────────────────────────────────────────────────────
+const overlay   = document.getElementById('analysisOverlay');
+const atubeFill = document.getElementById('atubeFill');
+const atubeSPF  = document.getElementById('atubeSPF');
+const tagline   = document.getElementById('analysisTagline');
+const STEP_IDS  = ['astep1','astep2','astep3','astep4'];
+
+const TAGLINES = [
+  'Reading your skin tone & texture…',
+  'Checking UV data for your location…',
+  'Matching actives to your concerns…',
+  'Your formula is ready.',
+];
+
+function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function runStep(index) {
+  return new Promise(resolve => {
+    const el    = document.getElementById(STEP_IDS[index]);
+    const fill  = el.querySelector('.astep-fill');
+    const check = el.querySelector('.astep-check');
+    tagline.textContent = TAGLINES[index];
+    el.classList.add('running');
+    fill.style.transition = 'width .72s ease';
+    fill.style.width = '100%';
+    const pct = ((index + 1) / STEP_IDS.length) * 100;
+    atubeFill.style.transition = 'height .72s ease';
+    atubeFill.style.height = pct + '%';
+    setTimeout(() => {
+      el.classList.remove('running');
+      el.classList.add('done');
+      check.style.opacity = '1';
+      setTimeout(resolve, 180);
+    }, 820);
+  });
+}
+
+async function runAnalysis() {
+  const profile  = getProfile();
+  const formula  = buildFormula(profile);
+  const seasonals = buildSeasonalFormulas(profile, formula.spf);
+
+  // update step 2 label with location
+  const city = profile.location.replace(/,.*/, '');
+  document.getElementById('astepLocLabel').textContent = `Checking UV index · ${city}`;
+
+  // reset overlay state
+  STEP_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    el.classList.remove('running','done');
+    el.querySelector('.astep-fill').style.cssText = 'width:0%;transition:none';
+    el.querySelector('.astep-check').style.opacity = '0';
+  });
+  atubeFill.style.cssText = 'height:0%;transition:none';
+  atubeSPF.textContent = '—';
+  tagline.textContent = 'Analysing your skin…';
+
+  overlay.classList.add('visible');
+  document.body.style.overflow = 'hidden';
+  await delay(320);
+
+  for (let i = 0; i < STEP_IDS.length; i++) {
+    await runStep(i);
+    if (i === STEP_IDS.length - 1) atubeSPF.textContent = `SPF ${formula.spf}`;
+    if (i < STEP_IDS.length - 1) await delay(220);
+  }
+
+  await delay(900);
+  overlay.classList.add('done');
+  await delay(600);
+  overlay.classList.remove('visible','done');
+  document.body.style.overflow = '';
+
+  renderFormula(profile, formula, seasonals);
+}
+
+document.getElementById('analyseBtn').addEventListener('click', runAnalysis);
+overlay.addEventListener('click', e => {
+  if (e.target === overlay) { overlay.classList.remove('visible','done'); document.body.style.overflow = ''; }
+});
+
+// ─────────────────────────────────────────────────────────────────
+//  FORM CONTROLS
+// ─────────────────────────────────────────────────────────────────
+
+// ── Image upload / preview ────────────────────────────────────────
+const dropZone  = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+const preview   = document.getElementById('preview');
+
+function loadImage(file) {
+  if (!file || !file.type.startsWith('image/')) return;
+  const reader = new FileReader();
+  reader.onload = e => { preview.src = e.target.result; dropZone.classList.add('has-image'); };
+  reader.readAsDataURL(file);
+}
+dropZone.addEventListener('click', e => {
+  if (e.target === fileInput || e.target.tagName === 'LABEL') return;
+  fileInput.click();
+});
+fileInput.addEventListener('change', () => loadImage(fileInput.files[0]));
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.borderColor = 'var(--gold)'; });
+dropZone.addEventListener('dragleave', () => { dropZone.style.borderColor = ''; });
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.style.borderColor = '';
+  loadImage(e.dataTransfer.files[0]);
+});
+
+// ── Chip toggles ──────────────────────────────────────────────────
+const TINT_GROUPS = ['undertone','coverage'];
+document.querySelectorAll('.chip-group').forEach(group => {
+  if (TINT_GROUPS.includes(group.dataset.group)) return;
+  const multi = group.dataset.group === 'concerns';
+  group.querySelectorAll('.chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      if (multi) { chip.classList.toggle('active'); }
+      else { group.querySelectorAll('.chip').forEach(c => c.classList.remove('active')); chip.classList.add('active'); }
+    });
+  });
+});
+
+// ── Sensitivity slider ────────────────────────────────────────────
+const slider    = document.getElementById('sensitivitySlider');
+const sliderVal = document.getElementById('sensitivityVal');
+const SENS_LABELS = ['','Minimal','Low','Moderate','High','Very high'];
+slider.addEventListener('input', () => { sliderVal.textContent = SENS_LABELS[slider.value]; });
+
+// ── Skin tone color picker + Fitzpatrick sync ─────────────────────
+const toneSlider      = document.getElementById('toneSlider');
+const tonePreview     = document.getElementById('tonePreview');
+const toneTypeLbl     = document.getElementById('toneTypeLabel');
+const fitzDescEl      = document.getElementById('fitzDesc');
+
+const TONE_STOPS = [
+  { pct:   0, r:253, g:232, b:216 },
+  { pct:  18, r:245, g:197, b:163 },
+  { pct:  36, r:232, g:168, b:124 },
+  { pct:  56, r:198, g:134, b: 66 },
+  { pct:  76, r:141, g: 85, b: 36 },
+  { pct: 100, r: 61, g: 28, b:  8 },
+];
+
+function lerpColor(pct, stops) {
+  let lo = stops[0], hi = stops[stops.length-1];
+  for (let i = 0; i < stops.length-1; i++) {
+    if (pct >= stops[i].pct && pct <= stops[i+1].pct) { lo = stops[i]; hi = stops[i+1]; break; }
+  }
+  const t = lo.pct === hi.pct ? 0 : (pct - lo.pct) / (hi.pct - lo.pct);
+  return `rgb(${Math.round(lo.r+t*(hi.r-lo.r))},${Math.round(lo.g+t*(hi.g-lo.g))},${Math.round(lo.b+t*(hi.b-lo.b))})`;
+}
+
+function nearestSwatch(pct) {
+  return [...document.querySelectorAll('.fitz-swatch')]
+    .reduce((best, s) => Math.abs(+s.dataset.val - pct) < Math.abs(+best.dataset.val - pct) ? s : best);
+}
+
+function applyTone(pct, source) {
+  tonePreview.style.background = lerpColor(pct, TONE_STOPS);
+  const active = nearestSwatch(pct);
+  toneTypeLbl.textContent = active.dataset.type;
+  document.querySelectorAll('.fitz-swatch').forEach(s => s.classList.remove('active'));
+  active.classList.add('active');
+  if (source !== 'init') {
+    fitzDescEl.textContent = active.dataset.desc;
+    fitzDescEl.classList.add('fitz-flash');
+    setTimeout(() => fitzDescEl.classList.remove('fitz-flash'), 400);
+  }
+}
+
+toneSlider.addEventListener('input', () => applyTone(+toneSlider.value, 'slider'));
+applyTone(+toneSlider.value, 'init');
+
+document.querySelectorAll('.fitz-swatch').forEach(s => {
+  s.addEventListener('click', () => { toneSlider.value = s.dataset.val; applyTone(+s.dataset.val, 'swatch'); });
+});
+
+// ── Tint panel ────────────────────────────────────────────────────
+const optTinted      = document.getElementById('optTinted');
+const tintPanel      = document.getElementById('tintPanel');
+const tintSlider     = document.getElementById('tintSlider');
+const tintPreview    = document.getElementById('tintPreview');
+const tintShadeLabel = document.getElementById('tintShadeLabel');
+const tintTubeBody   = document.getElementById('tintTubeBody');
+const tintMatchName  = document.getElementById('tintMatchName');
+
+const UNDERTONE_STOPS = {
+  warm:    [{pct:0,r:254,g:235,b:213},{pct:20,r:247,g:197,b:138},{pct:40,r:224,g:154,b:80},{pct:60,r:184,g:112,b:42},{pct:80,r:122,g:64,b:21},{pct:100,r:61,g:24,b:8}],
+  neutral: [{pct:0,r:253,g:232,b:216},{pct:18,r:245,g:197,b:163},{pct:40,r:212,g:149,b:106},{pct:60,r:160,g:101,b:53},{pct:80,r:107,g:61,b:30},{pct:100,r:61,g:28,b:8}],
+  cool:    [{pct:0,r:253,g:232,b:236},{pct:20,r:245,g:181,b:188},{pct:40,r:212,g:138,b:149},{pct:60,r:160,g:80,b:96},{pct:80,r:107,g:48,b:60},{pct:100,r:61,g:24,b:32}],
+};
+const COV_LABELS = { sheer:'Sheer', light:'Light', medium:'Medium', buildable:'Buildable' };
+const UNDERTONE_PREFIX = { warm:'W', neutral:'N', cool:'C' };
+let currentUndertone = 'neutral', currentCoverage = 'light';
+
+function shadeNum(pct) { return String(Math.min(6, Math.floor(pct/17)+1)).padStart(2,'0'); }
+
+function applyTintColor(pct) {
+  const stops = UNDERTONE_STOPS[currentUndertone];
+  const { r, g, b } = (() => {
+    const c = lerpColor(pct, stops).match(/\d+/g).map(Number);
+    return { r:c[0], g:c[1], b:c[2] };
+  })();
+  const css = `rgb(${r},${g},${b})`;
+  tintPreview.style.background = css;
+  tintTubeBody.style.background =
+    `linear-gradient(160deg,rgb(${Math.min(255,r+22)},${Math.min(255,g+18)},${Math.min(255,b+14)}),${css} 60%,rgb(${Math.max(0,r-22)},${Math.max(0,g-18)},${Math.max(0,b-14)}))`;
+  const shade = `${currentUndertone.charAt(0).toUpperCase()}${currentUndertone.slice(1)} ${shadeNum(pct)}`;
+  tintShadeLabel.textContent = `${UNDERTONE_PREFIX[currentUndertone]}${shadeNum(pct)}`;
+  tintMatchName.textContent  = `${shade} — ${COV_LABELS[currentCoverage]} coverage`;
+}
+
+tintSlider.addEventListener('input', () => applyTintColor(+tintSlider.value));
+
+document.querySelector('[data-group="undertone"]').querySelectorAll('.chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    document.querySelector('[data-group="undertone"]').querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+    currentUndertone = chip.dataset.val;
+    tintSlider.dataset.undertone = currentUndertone;
+    applyTintColor(+tintSlider.value);
+  });
+});
+
+document.querySelector('[data-group="coverage"]').querySelectorAll('.chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    document.querySelector('[data-group="coverage"]').querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+    currentCoverage = chip.dataset.val;
+    applyTintColor(+tintSlider.value);
+  });
+});
+
+optTinted.addEventListener('change', () => {
+  if (optTinted.checked) {
+    tintPanel.classList.add('open');
+    tintSlider.value = toneSlider.value;
+    tintSlider.dataset.undertone = currentUndertone;
+    applyTintColor(+tintSlider.value);
+  } else {
+    tintPanel.classList.remove('open');
+  }
+});
+
+toneSlider.addEventListener('input', () => {
+  if (optTinted.checked) { tintSlider.value = toneSlider.value; applyTintColor(+tintSlider.value); }
+});
+
+tintSlider.dataset.undertone = 'neutral';
+applyTintColor(+tintSlider.value);
+
+// ═══════════════════════════════════════════════════════════════
+//  FACE PREVIEW
+// ═══════════════════════════════════════════════════════════════
+
+const FACE_PALETTE = [
+  null,
+  { hair:'#ecd49e', hairDark:'#c4a870', eye:'#6b9ed4', eyeDark:'#3a6aa0', brow:'#907840', lip:'#d48888', lipDark:'#b86070' }, // I
+  { hair:'#c8a060', hairDark:'#a07840', eye:'#5a9068', eyeDark:'#2a6040', brow:'#6a5028', lip:'#c87070', lipDark:'#a85058' }, // II
+  { hair:'#8b5c2e', hairDark:'#5a3818', eye:'#6b4a30', eyeDark:'#3a2810', brow:'#3c2010', lip:'#b06060', lipDark:'#8a4048' }, // III
+  { hair:'#4a2e14', hairDark:'#2c1808', eye:'#3a2010', eyeDark:'#1e1008', brow:'#221008', lip:'#9a5050', lipDark:'#784040' }, // IV
+  { hair:'#281408', hairDark:'#140c04', eye:'#1e1008', eyeDark:'#0e0804', brow:'#100806', lip:'#8a4040', lipDark:'#6a3030' }, // V
+  { hair:'#0e0804', hairDark:'#080402', eye:'#0e0806', eyeDark:'#060402', brow:'#080404', lip:'#7a3830', lipDark:'#5a2820' }, // VI
+];
+
+function parseRgb(s) {
+  const m = (s || '').match(/\d+/g);
+  return m ? { r:+m[0], g:+m[1], b:+m[2] } : { r:245, g:197, b:163 };
+}
+
+function buildFaceSVG(sk, fitzNum, overlayHtml, uid) {
+  const pal = FACE_PALETTE[Math.max(1, Math.min(6, fitzNum))] || FACE_PALETTE[2];
+  const s   = `rgb(${sk.r},${sk.g},${sk.b})`;
+  const sd  = `rgb(${Math.max(0,sk.r-22)},${Math.max(0,sk.g-18)},${Math.max(0,sk.b-14)})`;
+  const sl  = `rgb(${Math.min(255,sk.r+30)},${Math.min(255,sk.g+24)},${Math.min(255,sk.b+18)})`;
+  const ba  = Math.max(0.04, 0.20 - fitzNum * 0.024).toFixed(3);
+  const { hair, hairDark, eye, eyeDark, brow, lip, lipDark } = pal;
+
+  return `<svg viewBox="0 0 220 280" xmlns="http://www.w3.org/2000/svg">
+<defs>
+  <radialGradient id="sg_${uid}" cx="48%" cy="34%" r="68%">
+    <stop offset="0%" stop-color="${sl}"/>
+    <stop offset="65%" stop-color="${s}"/>
+    <stop offset="100%" stop-color="${sd}"/>
+  </radialGradient>
+  <radialGradient id="blushrg_${uid}" cx="50%" cy="50%" r="50%">
+    <stop offset="0%" stop-color="rgba(215,90,72,${ba})"/>
+    <stop offset="100%" stop-color="rgba(215,90,72,0)"/>
+  </radialGradient>
+  <clipPath id="fc_${uid}">
+    <path d="M110,54C154,54 181,80 181,120C181,153 175,174 164,192C151,212 129,227 110,228C91,227 69,212 56,192C45,174 39,153 39,120C39,80 66,54 110,54Z"/>
+  </clipPath>
+</defs>
+<path d="M91,224C91,244 94,264 97,280L123,280C126,264 129,244 129,224C120,230 115,232 105,231Z" fill="${s}"/>
+<path d="M110,43C159,43 203,74 208,134C213,194 197,263 178,280L42,280C23,263 7,194 12,134C17,74 61,43 110,43Z" fill="${hair}"/>
+<ellipse cx="37" cy="154" rx="9" ry="14" fill="${s}"/>
+<ellipse cx="39" cy="154" rx="5" ry="9" fill="${sd}"/>
+<ellipse cx="183" cy="154" rx="9" ry="14" fill="${s}"/>
+<ellipse cx="181" cy="154" rx="5" ry="9" fill="${sd}"/>
+<path d="M110,54C154,54 181,80 181,120C181,153 175,174 164,192C151,212 129,227 110,228C91,227 69,212 56,192C45,174 39,153 39,120C39,80 66,54 110,54Z" fill="url(#sg_${uid})"/>
+<ellipse cx="72" cy="169" rx="26" ry="18" fill="url(#blushrg_${uid})"/>
+<ellipse cx="148" cy="169" rx="26" ry="18" fill="url(#blushrg_${uid})"/>
+<path d="M57,112Q72,104 90,109" stroke="${brow}" stroke-width="2.8" fill="none" stroke-linecap="round"/>
+<path d="M130,109Q148,104 163,112" stroke="${brow}" stroke-width="2.8" fill="none" stroke-linecap="round"/>
+<path d="M60,131C64,121 94,121 98,131C94,141 64,141 60,131Z" fill="white"/>
+<path d="M122,131C126,121 156,121 160,131C156,141 126,141 122,131Z" fill="white"/>
+<circle cx="79" cy="131" r="9" fill="${eye}"/><circle cx="79" cy="131" r="6" fill="${eyeDark}"/>
+<circle cx="79" cy="131" r="3.5" fill="#060402"/><circle cx="81" cy="129" r="2.4" fill="rgba(255,255,255,0.85)"/>
+<circle cx="141" cy="131" r="9" fill="${eye}"/><circle cx="141" cy="131" r="6" fill="${eyeDark}"/>
+<circle cx="141" cy="131" r="3.5" fill="#060402"/><circle cx="143" cy="129" r="2.4" fill="rgba(255,255,255,0.85)"/>
+<path d="M60,131C66,121 94,121 98,131" stroke="${brow}" stroke-width="1.6" fill="none" opacity="0.9"/>
+<path d="M122,131C126,121 156,121 160,131" stroke="${brow}" stroke-width="1.6" fill="none" opacity="0.9"/>
+<path d="M62,134C70,140 90,140 96,134" stroke="${sd}" stroke-width="0.8" fill="none" opacity="0.5"/>
+<path d="M124,134C130,140 150,140 158,134" stroke="${sd}" stroke-width="0.8" fill="none" opacity="0.5"/>
+<path d="M108,150C107,160 104,168 99,174C106,178 114,178 121,174C116,168 113,160 112,150Z" fill="${sd}" opacity="0.22"/>
+<ellipse cx="100" cy="174" rx="5.5" ry="3.5" fill="${sd}" opacity="0.44"/>
+<ellipse cx="120" cy="174" rx="5.5" ry="3.5" fill="${sd}" opacity="0.44"/>
+<path d="M83,193Q91,186 100,190Q110,183 120,190Q129,186 137,193Q128,201 110,198Q92,201 83,193Z" fill="${lip}"/>
+<path d="M83,193Q91,210 110,213Q129,210 137,193Q126,205 110,203Q94,205 83,193Z" fill="${lipDark}"/>
+<path d="M93,189Q110,185 127,189" stroke="rgba(255,255,255,0.22)" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+<path d="M39,120C41,84 66,50 110,46C154,50 179,84 181,120C168,108 152,97 138,93C126,76 118,70 110,68C102,70 94,76 82,93C68,97 52,108 39,120Z" fill="${hair}"/>
+<line x1="110" y1="46" x2="110" y2="68" stroke="${hairDark}" stroke-width="1.2" opacity="0.55"/>
+<ellipse cx="110" cy="92" rx="32" ry="22" fill="rgba(255,255,255,0.05)"/>
+<g clip-path="url(#fc_${uid})">${overlayHtml}</g>
+</svg>`;
+}
+
+function buildSpfOverlay(profile) {
+  if (profile.options.tinted) {
+    const rgb = parseRgb(tintPreview.style.background);
+    const { r, g, b } = rgb;
+    return `<rect x="0" y="0" width="220" height="280" fill="rgba(${r},${g},${b},0.36)"/>
+<ellipse cx="72" cy="155" rx="23" ry="15" fill="rgba(255,255,255,0.09)"/>
+<ellipse cx="148" cy="155" rx="23" ry="15" fill="rgba(255,255,255,0.09)"/>
+<ellipse cx="110" cy="88" rx="22" ry="15" fill="rgba(255,255,255,0.07)"/>
+<ellipse cx="110" cy="158" rx="7" ry="4" fill="rgba(255,255,255,0.12)"/>`;
+  }
+  if (profile.options.mineral) {
+    return `<rect x="0" y="0" width="220" height="280" fill="rgba(242,239,232,0.22)"/>
+<ellipse cx="110" cy="86" rx="30" ry="21" fill="rgba(255,255,255,0.15)"/>
+<ellipse cx="72" cy="152" rx="25" ry="16" fill="rgba(255,255,255,0.11)"/>
+<ellipse cx="148" cy="152" rx="25" ry="16" fill="rgba(255,255,255,0.11)"/>
+<ellipse cx="110" cy="159" rx="9" ry="6" fill="rgba(255,255,255,0.18)"/>
+<ellipse cx="110" cy="93" rx="13" ry="9" fill="rgba(255,255,255,0.20)"/>`;
+  }
+  return `<rect x="0" y="0" width="220" height="280" fill="rgba(248,245,238,0.10)"/>
+<ellipse cx="110" cy="90" rx="22" ry="15" fill="rgba(255,255,255,0.06)"/>`;
+}
+
+function updateFacePreviews() {
+  try {
+    const fitzEl  = document.querySelector('.fitz-swatch.active');
+    const fitzNum = fitzEl ? ({ I:1,II:2,III:3,IV:4,V:5,VI:6 }[fitzEl.dataset.type] || 2) : 2;
+    const sk      = parseRgb(lerpColor(+toneSlider.value, TONE_STOPS));
+    const profile = getProfile();
+    const bare = document.getElementById('faceBareWrap');
+    const spf  = document.getElementById('faceSpfWrap');
+    if (bare) bare.innerHTML = buildFaceSVG(sk, fitzNum, '', 'bare');
+    if (spf)  spf.innerHTML  = buildFaceSVG(sk, fitzNum, buildSpfOverlay(profile), 'spf');
+  } catch (e) { /* face preview errors must not block cursor */ }
+}
+
+toneSlider.addEventListener('input', updateFacePreviews);
+document.querySelectorAll('.fitz-swatch').forEach(s => s.addEventListener('click', updateFacePreviews));
+document.getElementById('optTinted').addEventListener('change', updateFacePreviews);
+document.getElementById('optMineral').addEventListener('change', updateFacePreviews);
+tintSlider.addEventListener('input', updateFacePreviews);
+document.querySelector('[data-group="undertone"]').querySelectorAll('.chip')
+  .forEach(c => c.addEventListener('click', () => setTimeout(updateFacePreviews, 60)));
+updateFacePreviews();
+
+// ═══════════════════════════════════════════════════════════════
+//  CUSTOM SUN CURSOR
+// ═══════════════════════════════════════════════════════════════
+
+const cursorSun = document.getElementById('cursorSun');
+let cx = window.innerWidth / 2, cy = window.innerHeight / 2;
+let tx = cx, ty = cy;
+let cursorReady = false;
+
+document.addEventListener('mousemove', e => {
+  tx = e.clientX;
+  ty = e.clientY;
+  if (!cursorReady) {
+    // snap to real position on first move so cursor doesn't swim in
+    cx = tx; cy = ty;
+    cursorReady = true;
+    if (cursorSun) cursorSun.style.opacity = '1';
+  }
+}, { passive: true });
+
+if (cursorSun) cursorSun.style.opacity = '0';
+
+(function animateCursor() {
+  cx += (tx - cx) * 0.18;
+  cy += (ty - cy) * 0.18;
+  if (cursorSun) {
+    cursorSun.style.left = cx + 'px';
+    cursorSun.style.top  = cy + 'px';
+  }
+  requestAnimationFrame(animateCursor);
+})();
+
+document.addEventListener('mouseover', e => {
+  if (!cursorSun) return;
+  const interactive = e.target.closest('button,a,input,label,.chip,.fitz-swatch,.option-toggle,.drop-zone');
+  cursorSun.classList.toggle('hovering', !!interactive);
+});

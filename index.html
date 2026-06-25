@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CanScreen — Sunscreen for your skin, by your skin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,700&family=Jost:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- ANALYSIS OVERLAY -->
+  <div class="analysis-overlay" id="analysisOverlay" aria-hidden="true">
+    <div class="analysis-modal">
+      <div class="analysis-tube-wrap">
+        <div class="atube">
+          <div class="atube-cap"></div>
+          <div class="atube-body">
+            <div class="atube-fill" id="atubeFill"></div>
+            <span class="atube-spf" id="atubeSPF">—</span>
+            <span class="atube-brand">canscreen</span>
+          </div>
+        </div>
+      </div>
+      <div class="analysis-steps" id="analysisSteps">
+        <div class="astep" id="astep1">
+          <div class="astep-icon">📸</div>
+          <div class="astep-body">
+            <span class="astep-label">Reading skin tone &amp; texture</span>
+            <div class="astep-track"><div class="astep-fill"></div></div>
+          </div>
+          <span class="astep-check">✓</span>
+        </div>
+        <div class="astep" id="astep2">
+          <div class="astep-icon">📍</div>
+          <div class="astep-body">
+            <span class="astep-label" id="astepLocLabel">Checking UV index · San Francisco</span>
+            <div class="astep-track"><div class="astep-fill"></div></div>
+          </div>
+          <span class="astep-check">✓</span>
+        </div>
+        <div class="astep" id="astep3">
+          <div class="astep-icon">🧪</div>
+          <div class="astep-body">
+            <span class="astep-label">Selecting filters &amp; actives</span>
+            <div class="astep-track"><div class="astep-fill"></div></div>
+          </div>
+          <span class="astep-check">✓</span>
+        </div>
+        <div class="astep" id="astep4">
+          <div class="astep-icon">✨</div>
+          <div class="astep-body">
+            <span class="astep-label">Compounding your formula</span>
+            <div class="astep-track"><div class="astep-fill"></div></div>
+          </div>
+          <span class="astep-check">✓</span>
+        </div>
+      </div>
+      <p class="analysis-tagline" id="analysisTagline">Analysing your skin…</p>
+    </div>
+  </div>
+
+  <!-- NAV -->
+  <nav class="nav">
+    <div class="nav-inner">
+      <a href="#" class="logo">can<span>screen</span></a>
+      <ul class="nav-links">
+        <li><a href="#how">How it works</a></li>
+        <li><a href="#science">Science</a></li>
+        <li><a href="#pricing">Pricing</a></li>
+      </ul>
+      <a href="#start" class="btn btn-sm">Get my formula</a>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero" id="start">
+    <div class="hero-badge">SPF · Personalised · Delivered</div>
+    <h1>Sunscreen <em>for your skin,</em><br>by your skin.</h1>
+    <p class="hero-sub">Upload a photo, tell us where you live, and we'll build a
+    custom SPF formula — then ship it to you every season.</p>
+    <a href="#upload" class="btn btn-hero">Analyse my skin →</a>
+    <div class="hero-pills">
+      <span>✔ Dermatologist-backed AI</span>
+      <span>✔ Seasonal reformulation</span>
+      <span>✔ UV-matched SPF</span>
+      <span class="pill-green">🌱 100% Vegan</span>
+      <span class="pill-green">✔ Gluten-free</span>
+    </div>
+    <div class="hero-visual">
+      <div class="uv-ring" aria-hidden="true">
+        <div class="uv-ring-inner"></div>
+        <span class="uv-label">UV Index<br><strong>8</strong></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section class="steps" id="how">
+    <div class="section-label">How it works</div>
+    <h2>Three steps to your perfect formula</h2>
+    <div class="steps-grid">
+      <div class="step-card">
+        <div class="step-icon">📸</div>
+        <div class="step-num">01</div>
+        <h3>Upload your skin photo</h3>
+        <p>Our AI reads undertone, texture, and sensitivity markers from a selfie taken in natural light.</p>
+      </div>
+      <div class="step-card">
+        <div class="step-icon">📍</div>
+        <div class="step-num">02</div>
+        <h3>Share your location</h3>
+        <p>We pull live UV index data and seasonal forecasts so your SPF is never over- or under-powered.</p>
+      </div>
+      <div class="step-card">
+        <div class="step-icon">🧪</div>
+        <div class="step-num">03</div>
+        <h3>Receive your formula</h3>
+        <p>A custom batch is compounded and shipped to you. Reformulated every season. Cancel anytime.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- UPLOAD / ANALYSIS FLOW -->
+  <section class="upload-section" id="upload">
+    <div class="upload-wrapper">
+      <!-- LEFT: upload -->
+      <div class="upload-panel">
+        <div class="section-label">Step 1 — Skin analysis</div>
+        <h2>Upload your photo</h2>
+        <p class="panel-sub">Take a selfie in natural daylight with no filter. Your photo is analysed locally and never stored.</p>
+
+        <div class="drop-zone" id="dropZone">
+          <input type="file" id="fileInput" accept="image/*" hidden />
+          <div class="drop-icon">
+            <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="24" cy="24" r="23" stroke="currentColor" stroke-width="1.5"/>
+              <path d="M24 16v16M16 24h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <p class="drop-text">Drag & drop or <label for="fileInput" class="file-label">browse</label></p>
+          <p class="drop-hint">JPG or PNG · max 10 MB</p>
+          <img id="preview" class="preview-img" alt="skin preview" />
+        </div>
+
+        <div class="tips">
+          <div class="tip"><span class="tip-dot good"></span>Good natural light</div>
+          <div class="tip"><span class="tip-dot good"></span>No makeup or filter</div>
+          <div class="tip"><span class="tip-dot bad"></span>Avoid flash</div>
+        </div>
+      </div>
+
+      <!-- RIGHT: skin profile form -->
+      <div class="profile-panel">
+        <div class="section-label">Step 2 — Your profile</div>
+        <h2>Tell us about your skin</h2>
+
+        <!-- SKIN TONE PICKER -->
+        <div class="form-group">
+          <label>Skin tone <span class="label-sub">(drag to match your shade)</span></label>
+          <div class="tone-picker-row">
+            <div class="tone-preview-wrap">
+              <div class="tone-preview" id="tonePreview"></div>
+              <span class="tone-preview-label" id="toneTypeLabel">II</span>
+            </div>
+            <div class="tone-slider-wrap">
+              <input type="range" class="tone-slider" id="toneSlider" min="0" max="100" value="18" />
+              <div class="tone-track-labels">
+                <span>Lightest</span>
+                <span>Deepest</span>
+              </div>
+            </div>
+          </div>
+          <div class="fitzpatrick-picker" id="fitzpatrickPicker">
+            <button class="fitz-swatch" data-type="I"   data-val="0"  data-spf="50+" data-desc="Very fair · Always burns, never tans · SPF 50+ essential" style="--shade:#fde8d8">
+              <span class="fitz-roman">I</span>
+            </button>
+            <button class="fitz-swatch active" data-type="II" data-val="18" data-spf="50+" data-desc="Fair · Usually burns, rarely tans · SPF 50+ recommended" style="--shade:#f5c5a3">
+              <span class="fitz-roman">II</span>
+            </button>
+            <button class="fitz-swatch" data-type="III" data-val="36" data-spf="50"  data-desc="Medium · Sometimes burns, gradually tans · SPF 50 recommended" style="--shade:#e8a87c">
+              <span class="fitz-roman">III</span>
+            </button>
+            <button class="fitz-swatch" data-type="IV"  data-val="56" data-spf="30"  data-desc="Olive · Rarely burns, tans easily · SPF 30–50 recommended" style="--shade:#c68642">
+              <span class="fitz-roman">IV</span>
+            </button>
+            <button class="fitz-swatch" data-type="V"   data-val="76" data-spf="30"  data-desc="Brown · Very rarely burns, tans easily · SPF 30 recommended" style="--shade:#8d5524">
+              <span class="fitz-roman">V</span>
+            </button>
+            <button class="fitz-swatch" data-type="VI"  data-val="100" data-spf="30" data-desc="Deep · Almost never burns · SPF 30 recommended" style="--shade:#3d1c08">
+              <span class="fitz-roman">VI</span>
+            </button>
+          </div>
+          <p class="fitz-desc" id="fitzDesc">Fair · Usually burns, rarely tans · SPF 50+ recommended</p>
+        </div>
+
+        <div class="form-group">
+          <label>Skin type</label>
+          <div class="chip-group" data-group="skin-type">
+            <button class="chip active" data-val="dry">Dry</button>
+            <button class="chip" data-val="normal">Normal</button>
+            <button class="chip" data-val="oily">Oily</button>
+            <button class="chip" data-val="combo">Combination</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Skin sensitivity</label>
+          <div class="sensitivity-slider">
+            <input type="range" min="1" max="5" value="3" id="sensitivitySlider" />
+            <div class="slider-labels">
+              <span>Not sensitive</span>
+              <span>Very sensitive</span>
+            </div>
+            <div class="sensitivity-display">
+              <span id="sensitivityVal">Moderate</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Skin concerns</label>
+          <div class="chip-group" data-group="concerns">
+            <button class="chip" data-val="acne">Acne-prone</button>
+            <button class="chip" data-val="aging">Anti-aging</button>
+            <button class="chip active" data-val="pigmentation">Pigmentation</button>
+            <button class="chip" data-val="redness">Redness</button>
+            <button class="chip" data-val="dryness">Dryness</button>
+          </div>
+        </div>
+
+        <!-- FORMULA OPTIONS -->
+        <div class="form-group">
+          <label>Formula options</label>
+          <div class="option-toggles">
+            <label class="option-toggle">
+              <input type="checkbox" id="optMineral" />
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+              <span class="toggle-content">
+                <span class="toggle-name">Extra mineral</span>
+                <span class="toggle-sub">Higher zinc oxide · 100% reef-safe · no chemical filters</span>
+              </span>
+            </label>
+            <label class="option-toggle">
+              <input type="checkbox" id="optSweat" checked />
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+              <span class="toggle-content">
+                <span class="toggle-name">Sweat resistant</span>
+                <span class="toggle-sub">80-min water &amp; sweat resistance · sport-grade binders</span>
+              </span>
+            </label>
+            <label class="option-toggle">
+              <input type="checkbox" id="optMatte" />
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+              <span class="toggle-content">
+                <span class="toggle-name">Non-oily / matte finish</span>
+                <span class="toggle-sub">Silica microspheres · no shine · makeup-ready</span>
+              </span>
+            </label>
+            <label class="option-toggle">
+              <input type="checkbox" id="optTinted" />
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+              <span class="toggle-content">
+                <span class="toggle-name">Tinted SPF</span>
+                <span class="toggle-sub">Iron-oxide tint matched to your selected skin tone</span>
+              </span>
+            </label>
+
+            <!-- TINT CUSTOMIZER (expands when tinted is on) -->
+            <div class="tint-panel" id="tintPanel">
+              <div class="tint-panel-inner">
+                <p class="tint-panel-label">Customise your tint shade</p>
+
+                <div class="tint-undertone-row">
+                  <span class="tint-field-label">Undertone</span>
+                  <div class="chip-group" data-group="undertone">
+                    <button class="chip" data-val="warm">Warm</button>
+                    <button class="chip active" data-val="neutral">Neutral</button>
+                    <button class="chip" data-val="cool">Cool</button>
+                  </div>
+                </div>
+
+                <div class="tint-shade-row">
+                  <span class="tint-field-label">Depth</span>
+                  <div class="tone-picker-row">
+                    <div class="tone-preview-wrap">
+                      <div class="tone-preview" id="tintPreview"></div>
+                      <span class="tone-preview-label" id="tintShadeLabel">N2</span>
+                    </div>
+                    <div class="tone-slider-wrap">
+                      <input type="range" class="tone-slider tint-slider" id="tintSlider" min="0" max="100" value="18" />
+                      <div class="tone-track-labels">
+                        <span>Lightest</span>
+                        <span>Deepest</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="tint-coverage-row">
+                  <span class="tint-field-label">Coverage</span>
+                  <div class="chip-group" data-group="coverage">
+                    <button class="chip" data-val="sheer">Sheer</button>
+                    <button class="chip active" data-val="light">Light</button>
+                    <button class="chip" data-val="medium">Medium</button>
+                    <button class="chip" data-val="buildable">Buildable</button>
+                  </div>
+                </div>
+
+                <div class="tint-tube-preview">
+                  <div class="tint-tube-wrap">
+                    <div class="tint-tube-cap"></div>
+                    <div class="tint-tube-body" id="tintTubeBody">
+                      <span class="tint-tube-spf">SPF 50+</span>
+                      <span class="tint-tube-name">tinted</span>
+                    </div>
+                  </div>
+                  <div class="tint-tube-meta">
+                    <p class="tint-match-label">Your shade match</p>
+                    <p class="tint-match-name" id="tintMatchName">Neutral 02 — Light coverage</p>
+                    <p class="tint-match-note">Iron oxides protect against visible light · no white cast</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Your location</label>
+          <div class="location-input">
+            <svg class="loc-icon" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M10 10.833A2.917 2.917 0 1 0 10 5a2.917 2.917 0 0 0 0 5.833Z" stroke="currentColor" stroke-width="1.25"/>
+              <path d="M10 18.333S3.333 13.056 3.333 8.333a6.667 6.667 0 1 1 13.334 0C16.667 13.056 10 18.333 10 18.333Z" stroke="currentColor" stroke-width="1.25"/>
+            </svg>
+            <input type="text" placeholder="City or postcode" id="locationInput" value="San Francisco, CA" />
+            <button class="locate-btn" title="Use my location">
+              <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="10" cy="10" r="3" stroke="currentColor" stroke-width="1.25"/>
+                <path d="M10 2v2M10 16v2M2 10h2M16 10h2" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- ── Face preview ───────────────────────────────────────── -->
+        <div class="form-group">
+          <label>Formula preview <span class="label-sub">updates live</span></label>
+          <div class="face-preview-pair">
+            <div class="face-preview-col">
+              <div class="face-wrap" id="faceBareWrap"></div>
+              <span class="face-preview-label">Your skin</span>
+            </div>
+            <div class="face-arrow">◆</div>
+            <div class="face-preview-col">
+              <div class="face-wrap" id="faceSpfWrap"></div>
+              <span class="face-preview-label">With formula</span>
+            </div>
+          </div>
+        </div>
+
+        <button class="btn btn-full" id="analyseBtn">Analyse &amp; build my formula →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- FORMULA RESULT -->
+  <section class="result-section" id="result">
+    <div class="section-label">Your personalised formula</div>
+    <h2>Formula <span class="formula-id">#CS-4821</span></h2>
+
+    <div class="result-grid">
+      <!-- Formula card -->
+      <div class="formula-card">
+        <div class="formula-header">
+          <div class="formula-thumb">
+            <div class="tube-mockup">
+              <div class="tube-cap"></div>
+              <div class="tube-body">
+                <span class="tube-spf">SPF 50+</span>
+                <span class="tube-name">canscreen</span>
+              </div>
+            </div>
+          </div>
+          <div class="formula-meta">
+            <p class="meta-label">Recommended SPF</p>
+            <p class="meta-value spf-value">SPF 50+</p>
+            <p class="meta-label">Finish</p>
+            <p class="meta-value">Lightweight fluid</p>
+            <p class="meta-label">Season</p>
+            <p class="meta-value">Summer 2026</p>
+          </div>
+        </div>
+
+        <div class="ingredient-list">
+
+          <div class="ingredient-row">
+            <div class="ing-header">
+              <div class="ing-info">
+                <span class="ing-name">Zinc Oxide 20%</span>
+                <span class="ing-reason">Broad-spectrum mineral filter · ideal for sensitive skin</span>
+              </div>
+              <button class="ing-why-btn" data-ing="zinc">Why?</button>
+            </div>
+            <div class="ing-bar"><div class="ing-fill" style="width:80%"></div></div>
+            <div class="ing-explain" id="explain-zinc">
+              Your skin is <strong>Fitzpatrick II</strong> with <strong>moderate sensitivity</strong>. Zinc Oxide is a physical blocker that sits on top of skin rather than absorbing into it — essential for reactive skin. At 20% it delivers broad UVA + UVB coverage without irritants like avobenzone.
+            </div>
+          </div>
+
+          <div class="ingredient-row">
+            <div class="ing-header">
+              <div class="ing-info">
+                <span class="ing-name">Niacinamide 5%</span>
+                <span class="ing-reason">Targets pigmentation · calms redness</span>
+              </div>
+              <button class="ing-why-btn" data-ing="nia">Why?</button>
+            </div>
+            <div class="ing-bar"><div class="ing-fill" style="width:50%"></div></div>
+            <div class="ing-explain" id="explain-nia">
+              You flagged <strong>pigmentation</strong> as a concern. Niacinamide suppresses melanosome transfer between skin cells, reducing dark spots over time. At 5% it's clinically proven effective — below the irritation threshold for dry skin types.
+            </div>
+          </div>
+
+          <div class="ingredient-row">
+            <div class="ing-header">
+              <div class="ing-info">
+                <span class="ing-name">Hyaluronic Acid 1%</span>
+                <span class="ing-reason">Hydration booster for dry skin type</span>
+              </div>
+              <button class="ing-why-btn" data-ing="ha">Why?</button>
+            </div>
+            <div class="ing-bar"><div class="ing-fill" style="width:20%"></div></div>
+            <div class="ing-explain" id="explain-ha">
+              Your profile is <strong>dry skin type</strong>. Mineral sunscreens can feel chalky without a humectant. Hyaluronic Acid draws moisture from the air into the skin, giving the formula a lightweight but hydrating finish that won't emphasise dry patches.
+            </div>
+          </div>
+
+          <div class="ingredient-row">
+            <div class="ing-header">
+              <div class="ing-info">
+                <span class="ing-name">Vitamin C (L-AA) 10%</span>
+                <span class="ing-reason">Antioxidant · pigmentation correction</span>
+              </div>
+              <button class="ing-why-btn" data-ing="vitc">Why?</button>
+            </div>
+            <div class="ing-bar"><div class="ing-fill" style="width:40%"></div></div>
+            <div class="ing-explain" id="explain-vitc">
+              San Francisco's summer UV index of <strong>8 (Very High)</strong> triggers significant free-radical damage even with SPF. L-Ascorbic Acid neutralises these radicals before they cause oxidative stress, and doubles down on your pigmentation concern by inhibiting tyrosinase enzyme activity.
+            </div>
+          </div>
+
+        </div>
+
+        <div class="cert-badges">
+          <span class="cert-badge cert-vegan">🌱 Vegan</span>
+          <span class="cert-badge cert-gf">✔ Gluten-free</span>
+          <span class="cert-badge cert-cf">✔ Cruelty-free</span>
+          <span class="cert-badge cert-reef">🐠 Reef-safe</span>
+          <span class="cert-badge cert-mineral">⬡ Mineral filters</span>
+        </div>
+      </div>
+
+      <!-- UV & skin breakdown -->
+      <div class="breakdown-col">
+        <div class="breakdown-card uv-card">
+          <div class="breakdown-icon">☀️</div>
+          <div>
+            <p class="breakdown-label">UV Index · San Francisco</p>
+            <p class="breakdown-value">8 — Very High</p>
+            <p class="breakdown-note">Peak hours 10am – 3pm · SPF 50+ recommended</p>
+          </div>
+        </div>
+
+        <div class="breakdown-card skin-card">
+          <div class="breakdown-icon">🧬</div>
+          <div>
+            <p class="breakdown-label">Skin analysis result</p>
+            <p class="breakdown-value">Fitzpatrick II · Dry · Moderate sensitivity</p>
+            <p class="breakdown-note">Elevated risk of sun damage · mineral filter preferred</p>
+          </div>
+        </div>
+
+        <div class="breakdown-card season-card">
+          <div class="breakdown-icon">📅</div>
+          <div>
+            <p class="breakdown-label">Seasonal adjustment</p>
+            <p class="breakdown-value">Summer → Autumn reformulation</p>
+            <p class="breakdown-note">Next shipment September 2026 · formula lightened for lower UV</p>
+          </div>
+        </div>
+
+        <button class="btn btn-full btn-dark">Subscribe — from $28/season →</button>
+      </div>
+    </div>
+
+    <!-- SEASONAL UV TIMELINE -->
+    <div class="season-timeline">
+      <div class="season-timeline-label">Your year in sunscreen</div>
+      <div class="season-strip">
+
+        <div class="season-block">
+          <div class="season-header">
+            <span class="season-icon">❄️</span>
+            <span class="season-name">Winter</span>
+            <span class="season-ship">Ships Dec</span>
+          </div>
+          <div class="season-uv-wrap">
+            <div class="season-uv-track">
+              <div class="season-uv-fill" style="height:28%"></div>
+            </div>
+            <span class="season-uv-val">3</span>
+          </div>
+          <div class="season-meta">
+            <span class="season-spf spf-low">SPF 30</span>
+            <span class="season-finish">Rich cream</span>
+          </div>
+          <p class="season-note">Low UV · extra hydration · no reef filters</p>
+        </div>
+
+        <div class="season-block">
+          <div class="season-header">
+            <span class="season-icon">🌸</span>
+            <span class="season-name">Spring</span>
+            <span class="season-ship">Ships Mar</span>
+          </div>
+          <div class="season-uv-wrap">
+            <div class="season-uv-track">
+              <div class="season-uv-fill" style="height:55%"></div>
+            </div>
+            <span class="season-uv-val">6</span>
+          </div>
+          <div class="season-meta">
+            <span class="season-spf spf-mid">SPF 50</span>
+            <span class="season-finish">Fluid lotion</span>
+          </div>
+          <p class="season-note">Moderate UV · increased antioxidant load</p>
+        </div>
+
+        <div class="season-block season-active">
+          <div class="season-header">
+            <span class="season-icon">☀️</span>
+            <span class="season-name">Summer</span>
+            <span class="season-ship">Ships Jun · Current</span>
+          </div>
+          <div class="season-uv-wrap">
+            <div class="season-uv-track">
+              <div class="season-uv-fill" style="height:82%"></div>
+            </div>
+            <span class="season-uv-val">8</span>
+          </div>
+          <div class="season-meta">
+            <span class="season-spf spf-high">SPF 50+</span>
+            <span class="season-finish">Lightweight fluid</span>
+          </div>
+          <p class="season-note">Very high UV · max mineral filter · water-resistant</p>
+        </div>
+
+        <div class="season-block">
+          <div class="season-header">
+            <span class="season-icon">🍂</span>
+            <span class="season-name">Autumn</span>
+            <span class="season-ship">Ships Sep</span>
+          </div>
+          <div class="season-uv-wrap">
+            <div class="season-uv-track">
+              <div class="season-uv-fill" style="height:42%"></div>
+            </div>
+            <span class="season-uv-val">5</span>
+          </div>
+          <div class="season-meta">
+            <span class="season-spf spf-mid">SPF 50</span>
+            <span class="season-finish">Balancing gel</span>
+          </div>
+          <p class="season-note">Moderate UV · skin recovery actives added</p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- PRESS STRIP -->
+  <div class="press-strip">
+    <span class="press-label">As seen in</span>
+    <div class="press-logos">
+      <span>Vogue</span>
+      <span>The New York Times</span>
+      <span>Allure</span>
+      <span>Harper's Bazaar</span>
+      <span>Byrdie</span>
+      <span>Well+Good</span>
+    </div>
+  </div>
+
+  <!-- CELEBRITY REVIEWS -->
+  <section class="reviews">
+    <div class="reviews-inner">
+      <div class="section-label">What people are saying</div>
+      <h2>Trusted by those who live<br><em>in the sun.</em></h2>
+
+      <div class="reviews-grid">
+
+        <div class="review-card review-featured">
+          <div class="review-stars">★★★★★</div>
+          <blockquote class="review-quote">
+            "I've tried every luxury SPF on the market. CanScreen is the first one that actually accounts for the fact that I'm filming in Miami in July and hibernating in London in November. My skin has never looked this even."
+          </blockquote>
+          <div class="review-author">
+            <div class="review-avatar" style="--av-a:#e8895c;--av-b:#c96a3a">ZE</div>
+            <div class="review-meta">
+              <span class="review-name">Zendaya</span>
+              <span class="review-role">Actor · Fitzpatrick III · LA</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="review-card">
+          <div class="review-stars">★★★★★</div>
+          <blockquote class="review-quote">
+            "My dermatologist actually asked me what I switched to. The custom zinc ratio works with my melanin instead of leaving that white cast. Finally."
+          </blockquote>
+          <div class="review-author">
+            <div class="review-avatar" style="--av-a:#8d5524;--av-b:#4a2912">BB</div>
+            <div class="review-meta">
+              <span class="review-name">Beyoncé</span>
+              <span class="review-role">Artist · Fitzpatrick V · Houston</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="review-card">
+          <div class="review-stars">★★★★★</div>
+          <blockquote class="review-quote">
+            "I'm outdoors constantly for shoots and I was terrified of SPF breaking out my skin. The oily-skin formulation is genuinely weightless. I forget I'm wearing it."
+          </blockquote>
+          <div class="review-author">
+            <div class="review-avatar" style="--av-a:#f5c5a3;--av-b:#e8895c">KJ</div>
+            <div class="review-meta">
+              <span class="review-name">Kendall Jenner</span>
+              <span class="review-role">Model · Fitzpatrick II · Malibu</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="review-card">
+          <div class="review-stars">★★★★★</div>
+          <blockquote class="review-quote">
+            "Tour life means different climates every week — Bangkok to Oslo in the same month. CanScreen adjusts for wherever I am. I literally get a new formula when the season changes."
+          </blockquote>
+          <div class="review-author">
+            <div class="review-avatar" style="--av-a:#c68642;--av-b:#8d5524">BW</div>
+            <div class="review-meta">
+              <span class="review-name">Bad Bunny</span>
+              <span class="review-role">Artist · Fitzpatrick IV · San Juan</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="review-card">
+          <div class="review-stars">★★★★★</div>
+          <blockquote class="review-quote">
+            "SPF used to pill under my foundation. This one layers like skincare — because it basically is skincare. The Vitamin C addition has done more for my complexion than anything I've used before."
+          </blockquote>
+          <div class="review-author">
+            <div class="review-avatar" style="--av-a:#fde8d8;--av-b:#f5c5a3">HA</div>
+            <div class="review-meta">
+              <span class="review-name">Hailey Bieber</span>
+              <span class="review-role">Model · Fitzpatrick I · Beverly Hills</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="review-card">
+          <div class="review-stars">★★★★★</div>
+          <blockquote class="review-quote">
+            "I was sceptical of the photo analysis — I'm a scientist at heart. But the Fitzpatrick classification matched exactly what my derm told me, and the formula recommendation made complete sense. Genuinely impressed."
+          </blockquote>
+          <div class="review-author">
+            <div class="review-avatar" style="--av-a:#e8895c;--av-b:#a04f24">RIH</div>
+            <div class="review-meta">
+              <span class="review-name">Rihanna</span>
+              <span class="review-role">Founder, Fenty · Fitzpatrick IV · Barbados</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="reviews-claim">
+        <div class="claim-stat"><span class="claim-num">98%</span><span class="claim-text">said formula felt made specifically for their skin</span></div>
+        <div class="claim-divider"></div>
+        <div class="claim-stat"><span class="claim-num">4.9★</span><span class="claim-text">average rating across 12,000+ subscribers</span></div>
+        <div class="claim-divider"></div>
+        <div class="claim-stat"><span class="claim-num">0</span><span class="claim-text">reported breakouts in clinical pilot · 6-month study</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SCIENCE -->
+  <section class="science" id="science">
+    <div class="section-label">The science</div>
+    <h2>Why one-size sunscreen<br>doesn't work</h2>
+    <div class="science-grid">
+      <div class="science-item">
+        <div class="sci-num">01</div>
+        <h3>Fitzpatrick scale</h3>
+        <p>Skin tone determines baseline UV sensitivity. Our AI classifies your skin from I–VI to calibrate SPF strength and mineral vs. chemical filter ratios.</p>
+      </div>
+      <div class="science-item">
+        <div class="sci-num">02</div>
+        <h3>UV index variance</h3>
+        <p>UV changes with altitude, latitude, and ozone. A New York winter needs SPF 30; a Miami summer needs 50+. We recalculate for your coordinates every season.</p>
+      </div>
+      <div class="science-item">
+        <div class="sci-num">03</div>
+        <h3>Skin microbiome</h3>
+        <p>Dry, oily, and sensitive skin each require different emollient and active balances. We adjust base formulation so the formula doesn't clog, pill, or irritate.</p>
+      </div>
+      <div class="science-item">
+        <div class="sci-num">04</div>
+        <h3>Seasonal reformulation</h3>
+        <p>Your formula is compounded fresh each season — not stored on a shelf. Every batch reflects current UV forecasts and any skin changes you report.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- PRICING -->
+  <section class="pricing" id="pricing">
+    <div class="section-label">Pricing</div>
+    <h2>Simple, seasonal pricing</h2>
+    <div class="pricing-grid">
+      <div class="plan-card">
+        <div class="plan-name">Essential</div>
+        <div class="plan-price">$28<span>/season</span></div>
+        <p class="plan-desc">1 × 75ml formula · reformulated 4× per year</p>
+        <ul class="plan-features">
+          <li>✔ AI skin analysis</li>
+          <li>✔ UV-matched SPF</li>
+          <li>✔ Seasonal reformulation</li>
+          <li>✔ Cancel anytime</li>
+        </ul>
+        <a href="#upload" class="btn btn-outline">Start analysis</a>
+      </div>
+      <div class="plan-card plan-featured">
+        <div class="plan-badge">Most popular</div>
+        <div class="plan-name">Pro</div>
+        <div class="plan-price">$48<span>/season</span></div>
+        <p class="plan-desc">2 × 75ml formula + tinted variant · priority shipping</p>
+        <ul class="plan-features">
+          <li>✔ Everything in Essential</li>
+          <li>✔ Tinted SPF option</li>
+          <li>✔ Dermatologist review</li>
+          <li>✔ Priority reformulation</li>
+        </ul>
+        <a href="#upload" class="btn">Start analysis</a>
+      </div>
+      <div class="plan-card">
+        <div class="plan-name">Family</div>
+        <div class="plan-price">$98<span>/season</span></div>
+        <p class="plan-desc">Up to 4 custom formulas · household shipping</p>
+        <ul class="plan-features">
+          <li>✔ 4 individual analyses</li>
+          <li>✔ 4 unique formulas</li>
+          <li>✔ Shared dashboard</li>
+          <li>✔ Cancel anytime</li>
+        </ul>
+        <a href="#upload" class="btn btn-outline">Start analysis</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="footer-inner">
+      <a href="#" class="logo">can<span>screen</span></a>
+      <p class="footer-copy">© 2026 CanScreen Inc. · Personalized sun care · All formulas are compounded by licensed pharmacists. · 100% Vegan &amp; Gluten-free · Cruelty-free · Reef-safe</p>
+      <div class="footer-links">
+        <a href="#">Privacy</a>
+        <a href="#">Terms</a>
+        <a href="#">Contact</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Custom sun cursor -->
+  <div class="cursor-sun" id="cursorSun" aria-hidden="true">
+    <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <filter id="cursor-glow-f" x="-60%" y="-60%" width="220%" height="220%">
+          <feGaussianBlur stdDeviation="2.5" result="blur"/>
+          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+      </defs>
+      <g class="sun-rays-group">
+        <line x1="24" y1="3" x2="24" y2="10" stroke="#d4b06a" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="24" y1="38" x2="24" y2="45" stroke="#d4b06a" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="3" y1="24" x2="10" y2="24" stroke="#d4b06a" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="38" y1="24" x2="45" y2="24" stroke="#d4b06a" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="8.5" y1="8.5" x2="13.5" y2="13.5" stroke="#d4b06a" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="34.5" y1="34.5" x2="39.5" y2="39.5" stroke="#d4b06a" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="39.5" y1="8.5" x2="34.5" y2="13.5" stroke="#d4b06a" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="13.5" y1="34.5" x2="8.5" y2="39.5" stroke="#d4b06a" stroke-width="1.5" stroke-linecap="round"/>
+        <circle cx="24" cy="24" r="14" stroke="rgba(212,176,106,0.25)" stroke-width="0.8" fill="none"/>
+      </g>
+      <g class="sun-core-group">
+        <circle cx="24" cy="24" r="9" fill="#b8963e" opacity="0.9" filter="url(#cursor-glow-f)"/>
+        <circle cx="24" cy="24" r="5.5" fill="#f0d870" opacity="0.88"/>
+        <circle cx="24" cy="24" r="2" fill="rgba(255,255,255,0.92)"/>
+      </g>
+    </svg>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
