@@ -443,6 +443,9 @@ function renderFormula(p, formula, seasonals) {
     block.classList.toggle('season-active', s === currentSeason);
   });
 
+  // Sync SPF timer with formula result
+  syncTimerSPF(spf, p);
+
   // Scroll to result
   document.getElementById('result').scrollIntoView({ behavior: 'smooth' });
 }
@@ -698,6 +701,120 @@ toneSlider.addEventListener('input', () => {
 
 tintSlider.dataset.undertone = 'neutral';
 applyTintColor(+tintSlider.value);
+
+// ═══════════════════════════════════════════════════════════════
+//  SPF EXPIRY TIMER
+// ═══════════════════════════════════════════════════════════════
+
+const RING_CIRC      = 2 * Math.PI * 90; // 565.5
+const timerRingArc   = document.getElementById('timerRingArc');
+const timerCountdown = document.getElementById('timerCountdown');
+const timerStatusEl  = document.getElementById('timerStatus');
+const timerSpfBadge  = document.getElementById('timerSpfBadge');
+const timerDurLabel  = document.getElementById('timerDurLabel');
+const timerExpiresAt = document.getElementById('timerExpiresAt');
+const timerReapplyCountEl = document.getElementById('timerReapplyCount');
+const timerAdviceEl  = document.getElementById('timerAdvice');
+const timerApplyBtn  = document.getElementById('timerApplyBtn');
+const timerReapplyBtn = document.getElementById('timerReapplyBtn');
+
+let spfInterval    = null;
+let spfTotal       = 0;
+let spfRemaining   = 0;
+let spfReapplies   = 0;
+let spfRunning     = false;
+let spfLastProfile = null;
+let spfLastSpf     = '50+';
+
+function calcProtectionMins(spf, profile) {
+  let mins = spf === '30' ? 120 : 150;
+  if (profile) {
+    if (profile.skinType === 'oily') mins -= 15;
+    if (profile.skinType === 'dry')  mins += 10;
+    if (profile.options && profile.options.sweat) mins += 45;
+    if (profile.uvIndex >= 10) mins -= 15;
+    else if (profile.uvIndex >= 8) mins -= 8;
+  }
+  return Math.max(80, Math.min(215, mins));
+}
+
+function fmtTime(s) {
+  const h   = Math.floor(s / 3600);
+  const m   = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+}
+
+function tickTimer() {
+  if (spfRemaining > 0) spfRemaining--;
+  const frac = spfTotal > 0 ? spfRemaining / spfTotal : 0;
+
+  // Ring
+  timerRingArc.style.strokeDashoffset = RING_CIRC * (1 - frac);
+  if (frac > 0.5)       timerRingArc.style.stroke = '#2d8a50';
+  else if (frac > 0.25) timerRingArc.style.stroke = '#b8963e';
+  else if (frac > 0.08) timerRingArc.style.stroke = '#d4832e';
+  else                  timerRingArc.style.stroke = '#c0392b';
+
+  // Countdown & status
+  if (spfRemaining <= 0) {
+    timerCountdown.textContent = '00:00:00';
+    timerCountdown.style.color = '#c0392b';
+    timerStatusEl.textContent  = 'Reapply now!';
+    timerStatusEl.style.color  = '#c0392b';
+    clearInterval(spfInterval);
+    spfRunning = false;
+  } else {
+    timerCountdown.textContent = fmtTime(spfRemaining);
+    if (frac > 0.25) {
+      timerCountdown.style.color = 'var(--gold)';
+      timerStatusEl.style.color  = 'var(--gold)';
+      timerStatusEl.textContent  = 'Protected ◆';
+    } else if (frac > 0.08) {
+      timerCountdown.style.color = '#d4832e';
+      timerStatusEl.style.color  = '#d4832e';
+      timerStatusEl.textContent  = 'Reapply soon';
+    } else {
+      timerCountdown.style.color = '#c0392b';
+      timerStatusEl.style.color  = '#c0392b';
+      timerStatusEl.textContent  = 'Expiring!';
+    }
+  }
+}
+
+function startTimer() {
+  if (spfInterval) clearInterval(spfInterval);
+  const mins = calcProtectionMins(spfLastSpf, spfLastProfile);
+  spfTotal     = mins * 60;
+  spfRemaining = spfTotal;
+  spfRunning   = true;
+
+  timerDurLabel.textContent = `${mins} min`;
+  const exp = new Date(Date.now() + spfTotal * 1000);
+  timerExpiresAt.textContent = exp.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+  timerReapplyCountEl.textContent = spfReapplies;
+  timerApplyBtn.style.display  = 'none';
+  timerReapplyBtn.style.display = '';
+
+  const sweatNote = spfLastProfile?.options?.sweat ? ' Sweat-resistant formula active.' : '';
+  timerAdviceEl.textContent = `SPF ${spfLastSpf} lasts ~${mins} min on your skin type.${sweatNote} The ring depletes in real time.`;
+
+  tickTimer();
+  spfInterval = setInterval(tickTimer, 1000);
+}
+
+function syncTimerSPF(spf, profile) {
+  spfLastSpf     = spf;
+  spfLastProfile = profile;
+  timerSpfBadge.textContent = `SPF ${spf}`;
+  const mins = calcProtectionMins(spf, profile);
+  timerDurLabel.textContent = `${mins} min`;
+  timerAdviceEl.textContent = `Your SPF ${spf} formula lasts ~${mins} min. Hit "I've applied" to start tracking.`;
+  if (spfRunning) startTimer();
+}
+
+timerApplyBtn.addEventListener('click', startTimer);
+timerReapplyBtn.addEventListener('click', () => { spfReapplies++; startTimer(); });
 
 // ═══════════════════════════════════════════════════════════════
 //  FACE PREVIEW
