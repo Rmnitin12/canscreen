@@ -173,6 +173,7 @@
               </div>
             </div>
           </div>
+          <button class="shade-match-btn" id="shadeMatchBtn">◆ Match my shade with camera</button>
           <div class="fitzpatrick-picker" id="fitzpatrickPicker">
             <button class="fitz-swatch" data-type="I"   data-val="0"  data-spf="50+" data-desc="Very fair · Always burns, never tans · SPF 50+ essential" style="--shade:#fde8d8">
               <span class="fitz-roman">I</span>
@@ -342,6 +343,20 @@
                 <path d="M10 2v2M10 16v2M2 10h2M16 10h2" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"/>
               </svg>
             </button>
+          </div>
+        </div>
+
+        <!-- ── Live UV widget ────────────────────────────────────── -->
+        <div class="uv-live-widget" id="uvLiveWidget">
+          <div class="uv-live-left">
+            <span class="uv-live-city" id="uvLiveCity">San Francisco</span>
+            <span class="uv-live-index-big" id="uvLiveIndexBig">8</span>
+            <span class="uv-live-label" id="uvLiveLabel">Very High</span>
+          </div>
+          <div class="uv-live-right">
+            <div class="uv-live-track"><div class="uv-live-fill" id="uvLiveFill"></div></div>
+            <span class="uv-live-status" id="uvLiveStatus">Build formula to check protection</span>
+            <button class="uv-live-refresh" id="uvLiveRefreshBtn">⟳ Live reading</button>
           </div>
         </div>
 
@@ -697,6 +712,79 @@
     </div>
   </section>
 
+  <!-- SEASONAL FLIP CARDS -->
+  <section class="flip-section">
+    <div class="section-label">Year-round protection</div>
+    <h2>Seasonal formula switcher</h2>
+    <p class="flip-intro">Click any season to reveal your personalised formula. Run analysis first to personalise.</p>
+    <div class="flip-cards-grid">
+      <div class="flip-card" data-season="spring">
+        <div class="flip-card-inner">
+          <div class="flip-card-face flip-card-front">
+            <div class="flip-season-icon">🌸</div>
+            <div class="flip-season-name">Spring</div>
+            <div class="flip-season-uv">UV <span class="flip-uv-val" id="flipUvSpring">--</span></div>
+            <div class="flip-hint">click to reveal</div>
+          </div>
+          <div class="flip-card-face flip-card-back">
+            <div class="flip-back-season">Spring</div>
+            <div class="flip-back-spf" id="flipSpfSpring">SPF --</div>
+            <div class="flip-back-ingr" id="flipIngrSpring">Build formula to see</div>
+            <div class="flip-back-note" id="flipNoteSpring">UV rising · skin renewal actives</div>
+          </div>
+        </div>
+      </div>
+      <div class="flip-card season-featured" data-season="summer">
+        <div class="flip-card-inner">
+          <div class="flip-card-face flip-card-front">
+            <div class="flip-season-icon">☀️</div>
+            <div class="flip-season-name">Summer</div>
+            <div class="flip-season-uv">UV <span class="flip-uv-val" id="flipUvSummer">--</span></div>
+            <div class="flip-hint">click to reveal</div>
+          </div>
+          <div class="flip-card-face flip-card-back">
+            <div class="flip-back-season">Summer</div>
+            <div class="flip-back-spf" id="flipSpfSummer">SPF --</div>
+            <div class="flip-back-ingr" id="flipIngrSummer">Build formula to see</div>
+            <div class="flip-back-note" id="flipNoteSummer">Peak UV · maximum protection</div>
+          </div>
+        </div>
+      </div>
+      <div class="flip-card" data-season="autumn">
+        <div class="flip-card-inner">
+          <div class="flip-card-face flip-card-front">
+            <div class="flip-season-icon">🍂</div>
+            <div class="flip-season-name">Autumn</div>
+            <div class="flip-season-uv">UV <span class="flip-uv-val" id="flipUvAutumn">--</span></div>
+            <div class="flip-hint">click to reveal</div>
+          </div>
+          <div class="flip-card-face flip-card-back">
+            <div class="flip-back-season">Autumn</div>
+            <div class="flip-back-spf" id="flipSpfAutumn">SPF --</div>
+            <div class="flip-back-ingr" id="flipIngrAutumn">Build formula to see</div>
+            <div class="flip-back-note" id="flipNoteAutumn">UV falling · barrier repair focus</div>
+          </div>
+        </div>
+      </div>
+      <div class="flip-card" data-season="winter">
+        <div class="flip-card-inner">
+          <div class="flip-card-face flip-card-front">
+            <div class="flip-season-icon">❄️</div>
+            <div class="flip-season-name">Winter</div>
+            <div class="flip-season-uv">UV <span class="flip-uv-val" id="flipUvWinter">--</span></div>
+            <div class="flip-hint">click to reveal</div>
+          </div>
+          <div class="flip-card-face flip-card-back">
+            <div class="flip-back-season">Winter</div>
+            <div class="flip-back-spf" id="flipSpfWinter">SPF --</div>
+            <div class="flip-back-ingr" id="flipIngrWinter">Build formula to see</div>
+            <div class="flip-back-note" id="flipNoteWinter">Low UV · hydration & ceramides</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- PRESS STRIP -->
   <div class="press-strip">
     <span class="press-label">As seen in</span>
@@ -857,7 +945,7 @@
           <li>✔ Seasonal reformulation</li>
           <li>✔ Cancel anytime</li>
         </ul>
-        <a href="#upload" class="btn btn-outline">Start analysis</a>
+        <button class="btn btn-outline plan-subscribe" data-spf="30">◆ Subscribe</button>
       </div>
       <div class="plan-card plan-featured">
         <div class="plan-badge">Most popular</div>
@@ -870,7 +958,7 @@
           <li>✔ Dermatologist review</li>
           <li>✔ Priority reformulation</li>
         </ul>
-        <a href="#upload" class="btn">Start analysis</a>
+        <button class="btn plan-subscribe" data-spf="50">◆ Subscribe</button>
       </div>
       <div class="plan-card">
         <div class="plan-name">Family</div>
@@ -882,7 +970,7 @@
           <li>✔ Shared dashboard</li>
           <li>✔ Cancel anytime</li>
         </ul>
-        <a href="#upload" class="btn btn-outline">Start analysis</a>
+        <button class="btn btn-outline plan-subscribe" data-spf="50">◆ Subscribe</button>
       </div>
     </div>
   </section>
@@ -899,6 +987,70 @@
       </div>
     </div>
   </footer>
+
+  <!-- BOX UNBOXING MODAL -->
+  <div class="unbox-overlay" id="unboxOverlay">
+    <div class="unbox-modal">
+      <div class="confetti-wrap" id="confettiWrap"></div>
+      <div class="unbox-stage">
+        <div class="unbox-tube" id="unboxTube">
+          <svg viewBox="0 0 60 180" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="utg" x1="0%" x2="100%" y1="0%" y2="0%">
+                <stop offset="0%" stop-color="#1a4a2e"/>
+                <stop offset="40%" stop-color="#2d6b42"/>
+                <stop offset="100%" stop-color="#0c1a12"/>
+              </linearGradient>
+            </defs>
+            <rect x="8" y="0" width="44" height="155" rx="4" fill="url(#utg)"/>
+            <rect x="8" y="0" width="44" height="32" rx="4" fill="#b8963e"/>
+            <text x="30" y="22" font-family="Cormorant Garamond,serif" font-size="8" fill="#0c1a12" text-anchor="middle" font-weight="700">SPF</text>
+            <text x="30" y="115" font-family="Cormorant Garamond,serif" font-size="10" fill="rgba(255,255,255,0.6)" text-anchor="middle">canscreen</text>
+            <ellipse cx="30" cy="155" rx="22" ry="8" fill="#0c1a12"/>
+            <ellipse cx="30" cy="155" rx="16" ry="5" fill="#1a3020"/>
+            <rect x="22" y="155" width="16" height="25" rx="2" fill="#8a6e28"/>
+          </svg>
+        </div>
+        <div class="unbox-box-wrap">
+          <div class="unbox-lid" id="unboxLid"><span class="unbox-lid-text">◆ canscreen ◆</span></div>
+          <div class="unbox-body"><div class="unbox-body-stripe"></div></div>
+        </div>
+      </div>
+      <div class="unbox-msg" id="unboxMsg">
+        <div class="unbox-msg-title">Your formula is shipping</div>
+        <div class="unbox-msg-sub">Formula <span id="unboxFid"></span> · Personalised SPF <span id="unboxMsgSpf"></span></div>
+      </div>
+      <button class="btn btn-outline unbox-close-btn" id="unboxClose">Close</button>
+    </div>
+  </div>
+
+  <!-- SHADE CAMERA MODAL -->
+  <div class="camera-overlay" id="cameraOverlay">
+    <div class="camera-modal">
+      <div class="camera-header">
+        <span class="section-label" style="color:var(--gold);border-color:rgba(184,150,62,.25)">Shade match</span>
+        <h3 class="camera-title">Match my skin tone</h3>
+        <p class="camera-desc">Center your face in the circle. We'll read your skin tone and set your profile.</p>
+      </div>
+      <div class="camera-view-wrap">
+        <video id="cameraVideo" autoplay playsinline muted></video>
+        <canvas id="cameraCanvas" width="320" height="320" style="display:none"></canvas>
+        <div class="camera-ring"></div>
+        <div class="camera-ch-h"></div>
+        <div class="camera-ch-v"></div>
+      </div>
+      <div class="camera-result" id="cameraResult">
+        <div class="camera-match-swatch" id="cameraMatchSwatch"></div>
+        <span class="camera-match-label" id="cameraMatchLabel">—</span>
+      </div>
+      <p class="camera-error" id="cameraError"></p>
+      <div class="camera-btns">
+        <button class="btn" id="cameraStartBtn">Start camera</button>
+        <button class="btn" id="cameraCaptureBtn" style="display:none">◆ Match my shade</button>
+        <button class="btn btn-outline" id="cameraClose">Cancel</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Custom sun cursor -->
   <div class="cursor-sun" id="cursorSun" aria-hidden="true">

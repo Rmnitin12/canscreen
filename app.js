@@ -443,9 +443,12 @@ function renderFormula(p, formula, seasonals) {
     block.classList.toggle('season-active', s === currentSeason);
   });
 
-  // Sync SPF timer and DNA helix with formula result
+  // Sync SPF timer, DNA helix, seasonal flip cards, and UV widget with formula result
   syncTimerSPF(spf, p);
   updateHelix(ingredients);
+  updateFlipCards(seasonals);
+  uvWidgetSpf = spf; // refresh UV widget protection status
+  { const uvBig = document.getElementById('uvLiveIndexBig'); if (uvBig) { const uv = parseInt(uvBig.textContent,10)||0; const city = document.getElementById('uvLiveCity'); updateUVWidget(uv, city&&city.textContent, spf); } }
 
   // Scroll to result
   document.getElementById('result').scrollIntoView({ behavior: 'smooth' });
@@ -1301,3 +1304,348 @@ function drawDNA() {
 }
 
 drawDNA();
+
+// ─────────────────────────────────────────────────────────────────
+//  FEATURE 5 · LIVE UV WIDGET
+// ─────────────────────────────────────────────────────────────────
+
+const UV_LABELS = ['Low','Moderate','High','Very High','Extreme'];
+function uvIndexLabel(uv) {
+  if (uv <= 2) return UV_LABELS[0];
+  if (uv <= 5) return UV_LABELS[1];
+  if (uv <= 7) return UV_LABELS[2];
+  if (uv <= 10) return UV_LABELS[3];
+  return UV_LABELS[4];
+}
+function uvIndexColor(uv) {
+  if (uv <= 2) return '#4caf50';
+  if (uv <= 5) return '#ffeb3b';
+  if (uv <= 7) return '#ff9800';
+  if (uv <= 10) return '#f44336';
+  return '#9c27b0';
+}
+
+async function fetchUVForCoords(lat, lon) {
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=uv_index&timezone=auto`;
+  const res = await fetch(url);
+  const data = await res.json();
+  return data.current ? Math.round(data.current.uv_index) : null;
+}
+
+function updateUVWidget(uv, cityName, spf) {
+  const uvCity = document.getElementById('uvLiveCity');
+  const uvBig = document.getElementById('uvLiveIndexBig');
+  const uvLabel = document.getElementById('uvLiveLabel');
+  const uvFill = document.getElementById('uvLiveFill');
+  const uvStatus = document.getElementById('uvLiveStatus');
+  if (!uvBig) return;
+
+  const capped = Math.min(uv, 12);
+  const pct = (capped / 12) * 100;
+  const color = uvIndexColor(uv);
+
+  if (uvCity) uvCity.textContent = cityName || 'Your location';
+  uvBig.textContent = uv;
+  uvBig.style.color = color;
+  if (uvLabel) uvLabel.textContent = uvIndexLabel(uv);
+  if (uvFill) { uvFill.style.width = pct + '%'; uvFill.style.background = color; }
+
+  if (uvStatus) {
+    if (!spf) {
+      uvStatus.textContent = 'Build formula to check protection';
+    } else {
+      const spfNum = parseInt(spf, 10);
+      if (uv <= 2) uvStatus.textContent = `SPF ${spfNum} is more than enough today`;
+      else if (uv <= 5) uvStatus.textContent = `SPF ${spfNum} provides solid coverage`;
+      else if (uv <= 7) uvStatus.textContent = `SPF ${spfNum} — reapply every 2 hrs`;
+      else if (uv <= 10) uvStatus.textContent = `SPF ${spfNum} essential — stay covered`;
+      else uvStatus.textContent = `Extreme UV — max protection, limit exposure`;
+    }
+  }
+}
+
+let uvWidgetSpf = null;
+async function loadUVForCity(cityName) {
+  const city = UV_MAP_CITIES.find(c => c.name === cityName);
+  if (!city) return;
+  updateUVWidget(city.uv, city.name, uvWidgetSpf);
+}
+
+async function initUVWidget() {
+  const refreshBtn = document.getElementById('uvLiveRefreshBtn');
+  if (!refreshBtn) return;
+
+  const tryGeo = () => {
+    if (!navigator.geolocation) { loadUVForCity('New York'); return; }
+    navigator.geolocation.getCurrentPosition(async pos => {
+      const { latitude: lat, longitude: lon } = pos.coords;
+      try {
+        const uv = await fetchUVForCoords(lat, lon);
+        if (uv === null) { loadUVForCity('New York'); return; }
+        // find nearest named city
+        let nearest = UV_MAP_CITIES[0], minD = 9999;
+        UV_MAP_CITIES.forEach(c => {
+          const d = Math.hypot(c.lat - lat, c.lon - lon);
+          if (d < minD) { minD = d; nearest = c; }
+        });
+        updateUVWidget(uv, nearest.name, uvWidgetSpf);
+      } catch { loadUVForCity('New York'); }
+    }, () => loadUVForCity('New York'));
+  };
+
+  refreshBtn.addEventListener('click', tryGeo);
+
+  // Also update when location input changes
+  const locInput = document.getElementById('locationInput');
+  if (locInput) {
+    locInput.addEventListener('change', () => {
+      const val = locInput.value.trim();
+      if (!val) return;
+      const match = UV_MAP_CITIES.find(c => c.name.toLowerCase() === val.toLowerCase());
+      if (match) updateUVWidget(match.uv, match.name, uvWidgetSpf);
+    });
+  }
+
+  tryGeo();
+}
+
+initUVWidget();
+
+// ─────────────────────────────────────────────────────────────────
+//  FEATURE 6 · BOX UNBOXING ANIMATION
+// ─────────────────────────────────────────────────────────────────
+
+function spawnConfetti() {
+  const wrap = document.getElementById('confettiWrap');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  const colors = ['#b8963e','#f8f5f0','#1a4a2e','#e8d5a3','#4a9a6a'];
+  for (let i = 0; i < 60; i++) {
+    const el = document.createElement('div');
+    el.className = 'confetti-piece';
+    el.style.left = Math.random() * 100 + '%';
+    el.style.top = '-20px';
+    el.style.background = colors[Math.floor(Math.random() * colors.length)];
+    el.style.animationDelay = Math.random() * 1.2 + 's';
+    el.style.animationDuration = 1.8 + Math.random() * 1.2 + 's';
+    el.style.transform = `rotate(${Math.random()*360}deg)`;
+    wrap.appendChild(el);
+  }
+}
+
+function runUnboxAnimation(spf, formulaId) {
+  const overlay = document.getElementById('unboxOverlay');
+  const lid = document.getElementById('unboxLid');
+  const tube = document.getElementById('unboxTube');
+  const msg = document.getElementById('unboxMsg');
+  const fid = document.getElementById('unboxFid');
+  const msgSpf = document.getElementById('unboxMsgSpf');
+  if (!overlay) return;
+
+  // Reset state
+  if (lid) lid.classList.remove('open');
+  if (tube) tube.classList.remove('risen');
+  if (msg) msg.classList.remove('visible');
+  if (fid) fid.textContent = formulaId || 'CS-' + Math.floor(Math.random()*9000+1000);
+  if (msgSpf) msgSpf.textContent = spf || '50';
+
+  overlay.classList.add('visible');
+
+  // Sequence: lid opens → tube rises → confetti → message
+  setTimeout(() => { if (lid) lid.classList.add('open'); }, 300);
+  setTimeout(() => { if (tube) tube.classList.add('risen'); }, 800);
+  setTimeout(spawnConfetti, 1200);
+  setTimeout(() => { if (msg) msg.classList.add('visible'); }, 1300);
+}
+
+// Wire up pricing buttons
+document.querySelectorAll('.plan-subscribe').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const spf = btn.dataset.spf || '50';
+    const fid = 'CS-' + Math.floor(Math.random()*9000+1000);
+    runUnboxAnimation(spf, fid);
+  });
+});
+
+// Also trigger from any "Subscribe" CTA in hero/result sections
+document.querySelectorAll('[data-unbox]').forEach(el => {
+  el.addEventListener('click', () => runUnboxAnimation('50', 'CS-' + Math.floor(Math.random()*9000+1000)));
+});
+
+const unboxClose = document.getElementById('unboxClose');
+if (unboxClose) {
+  unboxClose.addEventListener('click', () => {
+    const overlay = document.getElementById('unboxOverlay');
+    if (overlay) overlay.classList.remove('visible');
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────
+//  FEATURE 7 · SHADE-MATCH CAMERA
+// ─────────────────────────────────────────────────────────────────
+
+// Tone stop colors matching the slider gradient (from lightest to darkest)
+const CAMERA_TONE_STOPS = [
+  { v: 1,  r: 255, g: 220, b: 185, name: 'Porcelain' },
+  { v: 2,  r: 245, g: 205, b: 165, name: 'Ivory' },
+  { v: 3,  r: 225, g: 185, b: 140, name: 'Sand' },
+  { v: 4,  r: 200, g: 160, b: 115, name: 'Beige' },
+  { v: 5,  r: 175, g: 135, b: 90,  name: 'Honey' },
+  { v: 6,  r: 145, g: 105, b: 65,  name: 'Caramel' },
+  { v: 7,  r: 115, g: 78,  b: 48,  name: 'Toffee' },
+  { v: 8,  r: 85,  g: 55,  b: 35,  name: 'Mahogany' },
+  { v: 9,  r: 60,  g: 38,  b: 24,  name: 'Espresso' },
+  { v: 10, r: 40,  g: 24,  b: 14,  name: 'Ebony' },
+];
+
+function matchCameraColor(r, g, b) {
+  let best = CAMERA_TONE_STOPS[0], bestDist = Infinity;
+  CAMERA_TONE_STOPS.forEach(stop => {
+    const d = Math.hypot(r - stop.r, g - stop.g, b - stop.b);
+    if (d < bestDist) { bestDist = d; best = stop; }
+  });
+  return best;
+}
+
+function sampleCameraFrame(video, canvas) {
+  const ctx = canvas.getContext('2d');
+  const size = 320;
+  ctx.drawImage(video, 0, 0, size, size);
+  // Sample a 40×40 centre patch
+  const cx = size / 2, cy = size / 2, patch = 20;
+  const data = ctx.getImageData(cx - patch, cy - patch, patch * 2, patch * 2).data;
+  let rSum = 0, gSum = 0, bSum = 0, count = 0;
+  for (let i = 0; i < data.length; i += 4) {
+    rSum += data[i]; gSum += data[i+1]; bSum += data[i+2]; count++;
+  }
+  return { r: Math.round(rSum/count), g: Math.round(gSum/count), b: Math.round(bSum/count) };
+}
+
+let cameraStream = null;
+
+function openCameraModal() {
+  const overlay = document.getElementById('cameraOverlay');
+  if (overlay) overlay.classList.add('visible');
+}
+
+function closeCameraModal() {
+  const overlay = document.getElementById('cameraOverlay');
+  if (overlay) overlay.classList.remove('visible');
+  if (cameraStream) { cameraStream.getTracks().forEach(t => t.stop()); cameraStream = null; }
+  const startBtn = document.getElementById('cameraStartBtn');
+  const captureBtn = document.getElementById('cameraCaptureBtn');
+  const result = document.getElementById('cameraResult');
+  const errEl = document.getElementById('cameraError');
+  if (startBtn) { startBtn.style.display = ''; }
+  if (captureBtn) { captureBtn.style.display = 'none'; }
+  if (result) result.classList.remove('visible');
+  if (errEl) errEl.textContent = '';
+}
+
+const shadeMatchBtn = document.getElementById('shadeMatchBtn');
+if (shadeMatchBtn) shadeMatchBtn.addEventListener('click', openCameraModal);
+
+const cameraCloseBtn = document.getElementById('cameraClose');
+if (cameraCloseBtn) cameraCloseBtn.addEventListener('click', closeCameraModal);
+
+const cameraStartBtn = document.getElementById('cameraStartBtn');
+if (cameraStartBtn) {
+  cameraStartBtn.addEventListener('click', async () => {
+    const errEl = document.getElementById('cameraError');
+    const video = document.getElementById('cameraVideo');
+    const captureBtn = document.getElementById('cameraCaptureBtn');
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      if (errEl) errEl.textContent = 'Camera not supported in this browser.';
+      return;
+    }
+    try {
+      cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 320, height: 320 } });
+      video.srcObject = cameraStream;
+      cameraStartBtn.style.display = 'none';
+      if (captureBtn) captureBtn.style.display = '';
+      if (errEl) errEl.textContent = '';
+    } catch (e) {
+      if (errEl) errEl.textContent = 'Could not access camera. Please allow camera permission.';
+    }
+  });
+}
+
+const cameraCaptureBtn = document.getElementById('cameraCaptureBtn');
+if (cameraCaptureBtn) {
+  cameraCaptureBtn.addEventListener('click', () => {
+    const video = document.getElementById('cameraVideo');
+    const canvas = document.getElementById('cameraCanvas');
+    const swatch = document.getElementById('cameraMatchSwatch');
+    const label = document.getElementById('cameraMatchLabel');
+    const result = document.getElementById('cameraResult');
+    const toneSlider = document.getElementById('toneSlider');
+
+    if (!video || !canvas) return;
+    const { r, g, b } = sampleCameraFrame(video, canvas);
+    const match = matchCameraColor(r, g, b);
+
+    if (swatch) swatch.style.background = `rgb(${match.r},${match.g},${match.b})`;
+    if (label) label.textContent = `${match.name} — shade ${match.v}`;
+    if (result) result.classList.add('visible');
+
+    // Apply matched tone to slider
+    if (toneSlider) {
+      toneSlider.value = match.v;
+      toneSlider.dispatchEvent(new Event('input'));
+    }
+
+    // Close camera after 1.5s
+    setTimeout(closeCameraModal, 1500);
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────
+//  FEATURE 8 · SEASONAL FLIP CARDS
+// ─────────────────────────────────────────────────────────────────
+
+const SEASON_META = {
+  spring: { icon: '🌸', name: 'Spring', defaultUv: 5, defaultSpf: '30', defaultIngr: 'Zinc Oxide, Vitamin C, Hyaluronic Acid', defaultNote: 'Light texture, antioxidant-rich' },
+  summer: { icon: '☀️', name: 'Summer', defaultUv: 9, defaultSpf: '50', defaultIngr: 'Titanium Dioxide, Niacinamide, Aloe Vera', defaultNote: 'Water-resistant, cooling formula' },
+  autumn: { icon: '🍂', name: 'Autumn', defaultUv: 4, defaultSpf: '30', defaultIngr: 'Zinc Oxide, Vitamin E, Rosehip Oil', defaultNote: 'Nourishing, barrier-repair focus' },
+  winter: { icon: '❄️', name: 'Winter', defaultUv: 2, defaultSpf: '30', defaultIngr: 'Titanium Dioxide, Ceramides, Squalane', defaultNote: 'Rich, deeply moisturising blend' },
+};
+
+function updateFlipCards(seasonals) {
+  const seasons = ['spring', 'summer', 'autumn', 'winter'];
+  seasons.forEach(s => {
+    const meta = SEASON_META[s];
+    const data = (seasonals && seasonals[s]) || {};
+    const uv = data.uv !== undefined ? data.uv : meta.defaultUv;
+    const spf = data.spf || meta.defaultSpf;
+    const ingr = data.ingredients || meta.defaultIngr;
+    const note = data.note || meta.defaultNote;
+
+    const uvEl = document.getElementById('flipUv' + s.charAt(0).toUpperCase() + s.slice(1));
+    const spfEl = document.getElementById('flipSpf' + s.charAt(0).toUpperCase() + s.slice(1));
+    const ingrEl = document.getElementById('flipIngr' + s.charAt(0).toUpperCase() + s.slice(1));
+    const noteEl = document.getElementById('flipNote' + s.charAt(0).toUpperCase() + s.slice(1));
+
+    if (uvEl)   uvEl.textContent   = uv;
+    if (spfEl)  spfEl.textContent  = 'SPF ' + spf;
+    if (ingrEl) ingrEl.textContent = ingr;
+    if (noteEl) noteEl.textContent = note;
+  });
+}
+
+// Click-to-flip
+document.querySelectorAll('.flip-card').forEach(card => {
+  card.addEventListener('click', () => card.classList.toggle('flipped'));
+});
+
+// Auto-flip current season card on load (brief delay for visual delight)
+setTimeout(() => {
+  const season = getCurrentSeason();
+  const card = document.querySelector(`.flip-card[data-season="${season}"]`);
+  if (card) {
+    card.classList.add('flipped');
+    setTimeout(() => card.classList.remove('flipped'), 1800);
+  }
+}, 1000);
+
+// Initialize flip card defaults
+updateFlipCards(null);
