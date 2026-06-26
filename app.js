@@ -443,8 +443,9 @@ function renderFormula(p, formula, seasonals) {
     block.classList.toggle('season-active', s === currentSeason);
   });
 
-  // Sync SPF timer with formula result
+  // Sync SPF timer and DNA helix with formula result
   syncTimerSPF(spf, p);
+  updateHelix(ingredients);
 
   // Scroll to result
   document.getElementById('result').scrollIntoView({ behavior: 'smooth' });
@@ -973,3 +974,330 @@ document.addEventListener('mouseover', e => {
   const interactive = e.target.closest('button,a,input,label,.chip,.fitz-swatch,.option-toggle,.drop-zone');
   cursorSun.classList.toggle('hovering', !!interactive);
 });
+
+// ═══════════════════════════════════════════════════════════════
+//  FEATURE 2 — UV DANGER MAP
+// ═══════════════════════════════════════════════════════════════
+
+const UV_MAP_CITIES = [
+  { name:'San Francisco', uv:8,  lat:37.7,  lon:-122.4 },
+  { name:'Los Angeles',   uv:9,  lat:34.0,  lon:-118.2 },
+  { name:'Miami',         uv:11, lat:25.8,  lon:-80.2  },
+  { name:'New York',      uv:7,  lat:40.7,  lon:-74.0  },
+  { name:'Chicago',       uv:6,  lat:41.9,  lon:-87.6  },
+  { name:'Denver',        uv:8,  lat:39.7,  lon:-104.9 },
+  { name:'Phoenix',       uv:11, lat:33.4,  lon:-112.1 },
+  { name:'Seattle',       uv:5,  lat:47.6,  lon:-122.3 },
+  { name:'Honolulu',      uv:11, lat:21.3,  lon:-157.8 },
+  { name:'Toronto',       uv:6,  lat:43.7,  lon:-79.4  },
+  { name:'Mexico City',   uv:10, lat:19.4,  lon:-99.1  },
+  { name:'London',        uv:4,  lat:51.5,  lon:-0.1   },
+  { name:'Paris',         uv:5,  lat:48.9,  lon:2.3    },
+  { name:'Amsterdam',     uv:4,  lat:52.4,  lon:4.9    },
+  { name:'Berlin',        uv:4,  lat:52.5,  lon:13.4   },
+  { name:'Stockholm',     uv:3,  lat:59.3,  lon:18.1   },
+  { name:'Moscow',        uv:4,  lat:55.8,  lon:37.6   },
+  { name:'Barcelona',     uv:8,  lat:41.4,  lon:2.2    },
+  { name:'Rome',          uv:8,  lat:41.9,  lon:12.5   },
+  { name:'Athens',        uv:9,  lat:38.0,  lon:23.7   },
+  { name:'Istanbul',      uv:8,  lat:41.0,  lon:29.0   },
+  { name:'Cairo',         uv:10, lat:30.1,  lon:31.2   },
+  { name:'Nairobi',       uv:12, lat:-1.3,  lon:36.8   },
+  { name:'Lagos',         uv:11, lat:6.5,   lon:3.4    },
+  { name:'Cape Town',     uv:9,  lat:-33.9, lon:18.4   },
+  { name:'Dubai',         uv:12, lat:25.2,  lon:55.3   },
+  { name:'Riyadh',        uv:12, lat:24.7,  lon:46.7   },
+  { name:'Mumbai',        uv:11, lat:19.1,  lon:72.9   },
+  { name:'Delhi',         uv:9,  lat:28.6,  lon:77.2   },
+  { name:'Karachi',       uv:10, lat:24.9,  lon:67.0   },
+  { name:'Bangkok',       uv:11, lat:13.8,  lon:100.5  },
+  { name:'Singapore',     uv:11, lat:1.3,   lon:103.8  },
+  { name:'Beijing',       uv:7,  lat:39.9,  lon:116.4  },
+  { name:'Shanghai',      uv:8,  lat:31.2,  lon:121.5  },
+  { name:'Seoul',         uv:7,  lat:37.6,  lon:126.9  },
+  { name:'Tokyo',         uv:8,  lat:35.7,  lon:139.7  },
+  { name:'Sydney',        uv:11, lat:-33.9, lon:151.2  },
+  { name:'Melbourne',     uv:9,  lat:-37.8, lon:145.0  },
+  { name:'Auckland',      uv:10, lat:-36.8, lon:174.8  },
+  { name:'São Paulo',     uv:10, lat:-23.5, lon:-46.6  },
+  { name:'Rio de Janeiro',uv:11, lat:-22.9, lon:-43.2  },
+  { name:'Buenos Aires',  uv:8,  lat:-34.6, lon:-58.4  },
+];
+
+const LAND_POLYS = [
+  // North America
+  [[-168,71],[-55,47],[-67,44],[-82,41],[-82,24],[-90,15],[-85,9],[-78,8],[-90,11],[-104,19],[-117,32],[-124,37],[-125,49],[-135,60],[-168,60]],
+  // Greenland
+  [[-44,83],[-17,71],[-42,59],[-55,59],[-73,77]],
+  // South America
+  [[-82,11],[-62,10],[-50,0],[-36,-5],[-40,-22],[-50,-28],[-65,-55],[-75,-52],[-80,-35]],
+  // Europe
+  [[-10,36],[28,36],[42,38],[30,72],[10,72],[-10,72]],
+  // Africa
+  [[-17,15],[-5,35],[12,37],[37,37],[52,12],[42,0],[18,-35],[8,-35],[-18,17]],
+  // Asia
+  [[26,72],[55,72],[95,72],[145,43],[145,10],[105,-10],[75,10],[60,25],[37,12],[26,38]],
+  // Indian peninsula
+  [[60,25],[75,8],[80,12],[92,22],[88,27],[77,35],[68,23]],
+  // SE Asia peninsula
+  [[98,20],[104,10],[100,2],[108,0],[110,5],[105,15]],
+  // Australia
+  [[115,-22],[138,-12],[148,-20],[154,-26],[148,-38],[136,-35],[127,-34]],
+  // Japan
+  [[130,31],[141,40],[145,44],[141,45],[132,33]],
+  // UK
+  [[-8,52],[-5,58],[-1,58],[2,53],[-1,51],[-5,50]],
+];
+
+function uvHex(uv) {
+  if (uv <= 2) return '#40d060';
+  if (uv <= 5) return '#c8c030';
+  if (uv <= 7) return '#f0a020';
+  if (uv <= 10) return '#e04020';
+  return '#9060c0';
+}
+function uvRgba(uv, a) {
+  const h = uvHex(uv), r = parseInt(h.slice(1,3),16), g = parseInt(h.slice(3,5),16), b = parseInt(h.slice(5,7),16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+function toXY(lon, lat, W, H) {
+  return { x: (lon + 180) / 360 * W, y: (90 - lat) / 180 * H };
+}
+
+const uvCanvasEl  = document.getElementById('uvCanvas');
+const uvTipEl     = document.getElementById('uvTooltip');
+let uvTime = 0, uvHovered = null;
+
+function drawUVMap() {
+  if (!uvCanvasEl) return;
+  const ctx = uvCanvasEl.getContext('2d');
+  const W = uvCanvasEl.width, H = uvCanvasEl.height;
+  ctx.clearRect(0, 0, W, H);
+
+  // Ocean
+  ctx.fillStyle = '#0c1a12'; ctx.fillRect(0, 0, W, H);
+
+  // Grid
+  ctx.strokeStyle = 'rgba(197,185,154,0.05)'; ctx.lineWidth = 0.5;
+  for (let lon = -180; lon <= 180; lon += 30) {
+    const x = (lon + 180) / 360 * W;
+    ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke();
+  }
+  for (let lat = -90; lat <= 90; lat += 30) {
+    const y = (90-lat)/180*H;
+    ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke();
+  }
+
+  // Tropics
+  ctx.lineWidth = 0.8;
+  [{ lat:23.5, label:'Tropic of Cancer' },{ lat:0, label:'Equator' },{ lat:-23.5, label:'Tropic of Capricorn' }].forEach(({ lat, label }) => {
+    const y = (90-lat)/180*H;
+    ctx.strokeStyle = lat === 0 ? 'rgba(184,150,62,0.25)' : 'rgba(184,150,62,0.12)';
+    ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke();
+    ctx.fillStyle = 'rgba(184,150,62,0.35)'; ctx.font = '8px Jost,sans-serif';
+    ctx.fillText(label, 4, y - 3);
+  });
+
+  // Land
+  ctx.fillStyle = 'rgba(28,56,36,0.92)';
+  LAND_POLYS.forEach(poly => {
+    ctx.beginPath();
+    poly.forEach(([lon,lat],i) => {
+      const {x,y} = toXY(lon,lat,W,H);
+      i === 0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+    });
+    ctx.closePath(); ctx.fill();
+  });
+
+  // City dots
+  UV_MAP_CITIES.forEach(city => {
+    const {x,y} = toXY(city.lon, city.lat, W, H);
+    const baseR = 3 + city.uv * 0.28;
+    const pulse = (Math.sin(uvTime * 1.8 + city.lon * 0.08) + 1) / 2;
+    const glowR = baseR + 3 + pulse * 5;
+    const grd = ctx.createRadialGradient(x,y,baseR*0.3,x,y,glowR);
+    grd.addColorStop(0, uvRgba(city.uv, 0.45));
+    grd.addColorStop(1, uvRgba(city.uv, 0));
+    ctx.beginPath(); ctx.arc(x,y,glowR,0,Math.PI*2); ctx.fillStyle = grd; ctx.fill();
+    ctx.beginPath(); ctx.arc(x,y,baseR,0,Math.PI*2);
+    ctx.fillStyle = city === uvHovered ? '#ffffff' : uvHex(city.uv);
+    ctx.fill();
+  });
+
+  uvTime += 0.016;
+  requestAnimationFrame(drawUVMap);
+}
+
+uvCanvasEl && uvCanvasEl.addEventListener('mousemove', e => {
+  const rect = uvCanvasEl.getBoundingClientRect();
+  const sx = uvCanvasEl.width / rect.width, sy = uvCanvasEl.height / rect.height;
+  const mx = (e.clientX - rect.left) * sx, my = (e.clientY - rect.top) * sy;
+  let best = null, bestD = 18;
+  UV_MAP_CITIES.forEach(city => {
+    const {x,y} = toXY(city.lon, city.lat, uvCanvasEl.width, uvCanvasEl.height);
+    const d = Math.hypot(mx-x, my-y);
+    if (d < bestD) { best = city; bestD = d; }
+  });
+  uvHovered = best;
+  if (best) {
+    uvTipEl.style.display = 'block';
+    uvTipEl.style.left = (e.clientX - rect.left + 14) + 'px';
+    uvTipEl.style.top  = (e.clientY - rect.top - 14) + 'px';
+    uvTipEl.textContent = `${best.name} · UV ${best.uv}`;
+  } else { uvTipEl.style.display = 'none'; }
+});
+
+uvCanvasEl && uvCanvasEl.addEventListener('click', () => {
+  if (!uvHovered) return;
+  document.getElementById('locationInput').value = uvHovered.name;
+  const btn = document.getElementById('analyseBtn');
+  btn.style.boxShadow = '0 0 0 3px var(--gold)';
+  setTimeout(() => btn.style.boxShadow = '', 1800);
+  document.getElementById('upload').scrollIntoView({ behavior:'smooth' });
+});
+
+uvCanvasEl && uvCanvasEl.addEventListener('mouseleave', () => {
+  uvHovered = null;
+  if (uvTipEl) uvTipEl.style.display = 'none';
+});
+
+drawUVMap();
+
+// ═══════════════════════════════════════════════════════════════
+//  FEATURE 3 — AGING SIMULATOR
+// ═══════════════════════════════════════════════════════════════
+
+const yearSliderEl    = document.getElementById('yearSlider');
+const yearDisplayEl   = document.getElementById('yearDisplay');
+const agingNoSpfEl    = document.getElementById('agingNoSpfInner');
+const agingWithSpfEl  = document.getElementById('agingWithSpfInner');
+
+function buildWrinkles(years, heavy) {
+  if (years === 0) return '';
+  const t = years / 30;
+  const s = heavy ? 1 : 0.15;
+  const op = b => (b * t * s).toFixed(3);
+  const lw = b => Math.max(0.3, b * t * s).toFixed(2);
+  return `
+<path d="M72,88Q110,83 148,88" stroke="rgba(0,0,0,${op(0.28)})" stroke-width="${lw(2.5)}" fill="none" stroke-linecap="round"/>
+<path d="M78,97Q110,93 142,97" stroke="rgba(0,0,0,${op(0.2)})" stroke-width="${lw(2)}" fill="none" stroke-linecap="round"/>
+<path d="M84,105Q110,102 136,105" stroke="rgba(0,0,0,${op(0.13)})" stroke-width="${lw(1.5)}" fill="none" stroke-linecap="round"/>
+<path d="M59,133Q66,140 62,149" stroke="rgba(0,0,0,${op(0.22)})" stroke-width="${lw(1.5)}" fill="none" stroke-linecap="round"/>
+<path d="M61,131Q70,137 68,146" stroke="rgba(0,0,0,${op(0.15)})" stroke-width="${lw(1.2)}" fill="none" stroke-linecap="round"/>
+<path d="M161,133Q154,140 158,149" stroke="rgba(0,0,0,${op(0.22)})" stroke-width="${lw(1.5)}" fill="none" stroke-linecap="round"/>
+<path d="M159,131Q150,137 152,146" stroke="rgba(0,0,0,${op(0.15)})" stroke-width="${lw(1.2)}" fill="none" stroke-linecap="round"/>
+<path d="M85,174Q81,185 83,196" stroke="rgba(0,0,0,${op(0.2)})" stroke-width="${lw(2)}" fill="none" stroke-linecap="round"/>
+<path d="M135,174Q139,185 137,196" stroke="rgba(0,0,0,${op(0.2)})" stroke-width="${lw(2)}" fill="none" stroke-linecap="round"/>
+${heavy && t > 0.45 ? `
+<ellipse cx="76" cy="152" rx="4.5" ry="3" fill="rgba(100,55,18,${(t*0.28).toFixed(3)})"/>
+<ellipse cx="144" cy="149" rx="3.5" ry="2.5" fill="rgba(100,55,18,${(t*0.22).toFixed(3)})"/>
+<ellipse cx="103" cy="86" rx="3.5" ry="2.5" fill="rgba(100,55,18,${(t*0.22).toFixed(3)})"/>
+<ellipse cx="128" cy="90" rx="4" ry="2.5" fill="rgba(100,55,18,${(t*0.25).toFixed(3)})"/>
+<ellipse cx="116" cy="158" rx="3" ry="2" fill="rgba(100,55,18,${(t*0.18).toFixed(3)})"/>` : ''}`;
+}
+
+function agingFilter(years, heavy) {
+  const t = years / 30, s = heavy ? 1 : 0.1;
+  return `contrast(${(1+t*s*0.18).toFixed(3)}) saturate(${(1-t*s*0.35).toFixed(3)}) sepia(${(t*s*0.48).toFixed(3)}) brightness(${(1-t*s*0.1).toFixed(3)})`;
+}
+
+function updateAgingFaces() {
+  const years = +(yearSliderEl?.value || 0);
+  if (yearDisplayEl) yearDisplayEl.textContent = years;
+
+  const fitzEl  = document.querySelector('.fitz-swatch.active');
+  const fitzNum = fitzEl ? ({ I:1,II:2,III:3,IV:4,V:5,VI:6 }[fitzEl.dataset.type] || 2) : 2;
+  const sk      = parseRgb(lerpColor(+toneSlider.value, TONE_STOPS));
+
+  if (agingNoSpfEl) {
+    agingNoSpfEl.innerHTML = buildFaceSVG(sk, fitzNum, buildWrinkles(years, true), 'age_no');
+    agingNoSpfEl.style.filter = agingFilter(years, true);
+  }
+  if (agingWithSpfEl) {
+    const spfGlow = `<rect x="0" y="0" width="220" height="280" fill="rgba(242,239,232,0.10)"/>` + buildWrinkles(years, false);
+    agingWithSpfEl.innerHTML = buildFaceSVG(sk, fitzNum, spfGlow, 'age_spf');
+    agingWithSpfEl.style.filter = agingFilter(years, false);
+  }
+}
+
+yearSliderEl && yearSliderEl.addEventListener('input', updateAgingFaces);
+toneSlider.addEventListener('input', updateAgingFaces);
+document.querySelectorAll('.fitz-swatch').forEach(s => s.addEventListener('click', updateAgingFaces));
+updateAgingFaces();
+
+// ═══════════════════════════════════════════════════════════════
+//  FEATURE 4 — FORMULA DNA HELIX
+// ═══════════════════════════════════════════════════════════════
+
+let helixIngredients = [];
+let helixAngle = 0;
+const helixCanvasEl = document.getElementById('helixCanvas');
+
+function updateHelix(ingredients) {
+  helixIngredients = ingredients || [];
+  const sec = document.getElementById('dnaSection');
+  if (sec) sec.style.display = helixIngredients.length ? 'block' : 'none';
+}
+
+function drawDNA() {
+  if (!helixCanvasEl) { requestAnimationFrame(drawDNA); return; }
+  const ctx = helixCanvasEl.getContext('2d');
+  const W = helixCanvasEl.width, H = helixCanvasEl.height;
+  const N = helixIngredients.length;
+
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#f8f5f0'; ctx.fillRect(0, 0, W, H);
+
+  if (!N) { requestAnimationFrame(drawDNA); return; }
+
+  const cx = W / 2, amp = W * 0.27;
+  const topY = 38, botY = H - 38;
+  const spacing = (botY - topY) / (N + 1);
+
+  // Backbone helper
+  const backbone = (sign, color) => {
+    ctx.beginPath();
+    for (let i = 0; i <= N + 1; i++) {
+      const y = topY + i * spacing;
+      const phase = ((i - 1) / Math.max(N,1)) * Math.PI * 3.5;
+      const x = cx + sign * Math.sin(helixAngle + phase) * amp;
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.strokeStyle = color; ctx.lineWidth = 3; ctx.stroke();
+  };
+  backbone(1, 'rgba(26,74,46,0.55)');
+  backbone(-1, 'rgba(184,150,62,0.55)');
+
+  // Rungs
+  const rungs = helixIngredients.map((ing, i) => {
+    const y = topY + (i + 1) * spacing;
+    const phase = (i / Math.max(N,1)) * Math.PI * 3.5;
+    const angle = helixAngle + phase;
+    return { x1: cx + Math.sin(angle)*amp, x2: cx - Math.sin(angle)*amp, y, depth: Math.cos(angle), ing };
+  });
+
+  [...rungs].sort((a,b) => a.depth - b.depth).forEach(({ x1, x2, y, depth, ing }) => {
+    const a = 0.22 + 0.78 * ((depth + 1) / 2);
+    const front = depth > 0;
+
+    ctx.beginPath(); ctx.moveTo(x1,y); ctx.lineTo(x2,y);
+    ctx.strokeStyle = `rgba(184,150,62,${a.toFixed(2)})`; ctx.lineWidth = front ? 2.5 : 1.5; ctx.stroke();
+
+    [[x1,'26,74,46'],[x2,'184,150,62']].forEach(([x, rgb]) => {
+      ctx.beginPath(); ctx.arc(x, y, front ? 5.5 : 3.5, 0, Math.PI*2);
+      ctx.fillStyle = `rgba(${rgb},${a.toFixed(2)})`; ctx.fill();
+    });
+
+    if (front && a > 0.55) {
+      ctx.font = `500 ${Math.round(10 + a * 2)}px Jost,sans-serif`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+      ctx.fillStyle = `rgba(12,26,18,${Math.min(1,a*1.4).toFixed(2)})`;
+      ctx.fillText(ing.name, (x1+x2)/2, y - 8);
+    }
+  });
+
+  helixAngle += 0.007;
+  requestAnimationFrame(drawDNA);
+}
+
+drawDNA();

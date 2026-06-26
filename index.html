@@ -579,6 +579,17 @@
 
       </div>
     </div>
+
+    <!-- DNA HELIX -->
+    <div class="dna-section" id="dnaSection" style="display:none">
+      <div class="dna-header">
+        <span class="section-label" style="color:var(--gold)">Formula visualization</span>
+        <h3 class="dna-heading">Your formula DNA</h3>
+        <p class="dna-sub">Each rung represents an active ingredient, weighted by concentration.</p>
+      </div>
+      <canvas id="helixCanvas" width="520" height="460"></canvas>
+    </div>
+
   </section>
 
   <!-- SPF TIMER -->
@@ -638,6 +649,51 @@
         <p class="timer-disclaimer">Always reapply after swimming or heavy sweating regardless of timer status.</p>
       </div>
 
+    </div>
+  </section>
+
+  <!-- UV DANGER MAP -->
+  <section class="uv-map-section">
+    <div class="section-label">Global UV intelligence</div>
+    <h2>UV danger zones</h2>
+    <p class="uv-map-intro">Peak UV index across 43 cities. Click any city to set your location.</p>
+    <div class="uv-map-wrap">
+      <canvas id="uvCanvas" width="900" height="430"></canvas>
+      <div class="uv-tooltip" id="uvTooltip"></div>
+    </div>
+    <div class="uv-legend">
+      <div class="uv-legend-item"><span class="uv-dot" style="background:#40d060"></span>Low 1–2</div>
+      <div class="uv-legend-item"><span class="uv-dot" style="background:#c8c030"></span>Moderate 3–5</div>
+      <div class="uv-legend-item"><span class="uv-dot" style="background:#f0a020"></span>High 6–7</div>
+      <div class="uv-legend-item"><span class="uv-dot" style="background:#e04020"></span>Very High 8–10</div>
+      <div class="uv-legend-item"><span class="uv-dot" style="background:#9060c0"></span>Extreme 11+</div>
+    </div>
+  </section>
+
+  <!-- AGING SIMULATOR -->
+  <section class="aging-section">
+    <div class="section-label">Photoaging simulator</div>
+    <h2>Your skin in 30 years</h2>
+    <p class="aging-intro">Drag the slider to see the cumulative effect of daily UV exposure on your skin type — with and without SPF.</p>
+    <div class="aging-slider-wrap">
+      <span class="aging-yr">Now</span>
+      <input type="range" id="yearSlider" min="0" max="30" step="10" value="0" class="tone-slider"/>
+      <span class="aging-yr">+30 yrs</span>
+    </div>
+    <div class="aging-year-badge">+<span id="yearDisplay">0</span> years of UV exposure</div>
+    <div class="aging-faces">
+      <div class="aging-col">
+        <div class="aging-face-outer">
+          <div class="aging-face-inner" id="agingNoSpfInner"></div>
+        </div>
+        <div class="aging-tag bad">Without SPF</div>
+      </div>
+      <div class="aging-col">
+        <div class="aging-face-outer">
+          <div class="aging-face-inner" id="agingWithSpfInner"></div>
+        </div>
+        <div class="aging-tag good">With CanScreen daily SPF</div>
+      </div>
     </div>
   </section>
 
