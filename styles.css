@@ -1225,6 +1225,104 @@ input[type=range]::-webkit-slider-thumb {
   color: var(--gold); margin-bottom: 1.15rem; flex-shrink: 0; font-size: .75rem;
 }
 
+/* ─── FAQ ───────────────────────────────────────────────────────── */
+.faq {
+  background: var(--sand);
+  border-top: 1px solid var(--clay);
+  padding: 8rem 2rem;
+}
+.faq-inner { max-width: 760px; margin: 0 auto; }
+.faq h2 { margin-bottom: 3rem; color: var(--forest); }
+.faq-list { display: flex; flex-direction: column; }
+.faq-item { border-bottom: 1px solid var(--clay); }
+.faq-item:first-child { border-top: 1px solid var(--clay); }
+.faq-q {
+  width: 100%; background: none; border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 1rem; padding: 1.4rem 0;
+  font-family: 'Jost', sans-serif;
+  font-size: .92rem; font-weight: 500; color: var(--forest);
+  text-align: left; letter-spacing: .02em;
+  transition: color .15s;
+}
+.faq-q:hover { color: var(--gold); }
+.faq-icon {
+  font-size: .45rem; color: var(--gold); flex-shrink: 0;
+  transition: transform .38s cubic-bezier(.4,0,.2,1);
+}
+.faq-item.open .faq-icon { transform: rotate(45deg); }
+.faq-a {
+  overflow: hidden;
+  max-height: 0;
+  transition: max-height .42s cubic-bezier(.4,0,.2,1);
+}
+.faq-item.open .faq-a { max-height: 300px; }
+.faq-a p {
+  padding-bottom: 1.5rem;
+  font-size: .84rem; color: var(--muted);
+  font-weight: 300; line-height: 1.78; max-width: 62ch;
+}
+
+/* ─── Waitlist ──────────────────────────────────────────────────── */
+.waitlist {
+  background: var(--forest);
+  border-top: 1px solid rgba(184,150,62,.12);
+  padding: 9rem 2rem; text-align: center;
+}
+.waitlist-inner { max-width: 600px; margin: 0 auto; }
+.waitlist .section-label { color: var(--gold-light); }
+.waitlist .section-label::before { background: var(--gold-light); }
+.waitlist h2 { color: var(--cream); margin-bottom: 1.25rem; }
+.waitlist-sub {
+  font-size: .9rem; color: rgba(248,245,240,.5);
+  font-weight: 300; line-height: 1.75; margin-bottom: 2.5rem;
+  max-width: 46ch; margin-left: auto; margin-right: auto;
+}
+.waitlist-input-wrap {
+  display: flex; max-width: 480px; margin: 0 auto 1rem;
+}
+.waitlist-email {
+  flex: 1; padding: .875rem 1.25rem;
+  background: rgba(255,255,255,.06);
+  border: 1.5px solid rgba(184,150,62,.35); border-right: none;
+  font-family: 'Jost', sans-serif; font-size: .84rem;
+  color: var(--cream); letter-spacing: .02em;
+  outline: none; transition: border-color .2s;
+  border-radius: 0;
+}
+.waitlist-email::placeholder { color: rgba(255,255,255,.25); }
+.waitlist-email:focus { border-color: var(--gold); }
+.waitlist-note {
+  font-size: .62rem; color: rgba(255,255,255,.2);
+  letter-spacing: .08em; text-transform: uppercase;
+}
+.waitlist-success {
+  display: none; flex-direction: column; align-items: center; gap: .75rem;
+  padding: 2.5rem 1rem;
+}
+.waitlist-success.visible { display: flex; }
+.waitlist-success-icon {
+  font-size: .55rem; color: var(--gold);
+  animation: pulse-gold 2s ease infinite;
+}
+@keyframes pulse-gold {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: .35; }
+}
+.waitlist-success-msg {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.5rem; color: var(--cream); font-style: italic;
+}
+.waitlist-pills {
+  display: flex; flex-wrap: wrap; gap: .6rem;
+  justify-content: center; margin-top: 3rem;
+}
+.waitlist-pills span {
+  font-size: .62rem; font-weight: 600; letter-spacing: .12em;
+  text-transform: uppercase; color: rgba(255,255,255,.28);
+  border: 1px solid rgba(255,255,255,.1); padding: .3rem .9rem;
+}
+
 /* ─── Responsive ────────────────────────────────────────────────── */
 @media (max-width: 900px) {
   .hero-visual { display: none; }
@@ -1243,7 +1341,9 @@ input[type=range]::-webkit-slider-thumb {
 }
 @media (max-width: 640px) {
   .hero { padding: 6rem 1.25rem 3rem; }
-  .steps, .upload-section, .result-section, .science, .pricing, .reviews { padding: 4rem 1.25rem; }
+  .steps, .upload-section, .result-section, .science, .pricing, .reviews, .faq, .waitlist { padding: 4rem 1.25rem; }
+  .waitlist-input-wrap { flex-direction: column; }
+  .waitlist-email { border-right: 1.5px solid rgba(184,150,62,.35); border-bottom: none; }
   .footer-inner { flex-direction: column; text-align: center; }
   .season-strip { grid-template-columns: 1fr 1fr; }
   .fitzpatrick-picker { gap: .3rem; }

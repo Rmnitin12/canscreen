@@ -1716,3 +1716,32 @@ updateFlipCards(null);
 
   document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
 })();
+
+/* ─── FAQ accordion ─────────────────────────────────────────────── */
+document.querySelectorAll('.faq-q').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const item = btn.closest('.faq-item');
+    const isOpen = item.classList.contains('open');
+    document.querySelectorAll('.faq-item.open').forEach(el => {
+      el.classList.remove('open');
+      el.querySelector('.faq-q').setAttribute('aria-expanded', 'false');
+    });
+    if (!isOpen) {
+      item.classList.add('open');
+      btn.setAttribute('aria-expanded', 'true');
+    }
+  });
+});
+
+/* ─── Waitlist form ─────────────────────────────────────────────── */
+const waitlistForm = document.getElementById('waitlistForm');
+const waitlistSuccess = document.getElementById('waitlistSuccess');
+if (waitlistForm && waitlistSuccess) {
+  waitlistForm.addEventListener('submit', e => {
+    e.preventDefault();
+    const email = document.getElementById('waitlistEmail').value.trim();
+    if (!email || !email.includes('@')) return;
+    waitlistForm.style.display = 'none';
+    waitlistSuccess.classList.add('visible');
+  });
+}
