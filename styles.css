@@ -92,37 +92,9 @@ em { font-style: italic; color: var(--gold); }
 .btn-hero { font-size: .88rem; padding: 1.1rem 2.5rem; }
 .btn-full { width: 100%; justify-content: center; }
 
-/* ─── Promo Banner ───────────────────────────────────────────────── */
-.promo-banner {
-  position: fixed; top: 0; left: 0; right: 0; z-index: 101;
-  height: 36px; overflow: hidden;
-  background: linear-gradient(90deg, var(--gold-dark) 0%, var(--gold) 40%, #d4a84b 60%, var(--gold-dark) 100%);
-  border-bottom: 1px solid var(--gold-light);
-  display: flex; align-items: center;
-}
-.promo-banner::before,
-.promo-banner::after {
-  content: '';
-  position: absolute; top: 0; bottom: 0; width: 60px; z-index: 2; pointer-events: none;
-}
-.promo-banner::before { left: 0; background: linear-gradient(90deg, var(--gold-dark), transparent); }
-.promo-banner::after  { right: 0; background: linear-gradient(-90deg, var(--gold-dark), transparent); }
-.promo-track {
-  display: flex; gap: 0; white-space: nowrap;
-  animation: promo-scroll 22s linear infinite;
-}
-.promo-item {
-  font-size: .65rem; font-weight: 700; letter-spacing: .18em; text-transform: uppercase;
-  color: var(--forest); padding: 0 3rem; flex-shrink: 0;
-}
-@keyframes promo-scroll {
-  0%   { transform: translateX(0); }
-  100% { transform: translateX(-50%); }
-}
-
 /* ─── Nav ───────────────────────────────────────────────────────── */
 .nav {
-  position: fixed; top: 36px; left: 0; right: 0; z-index: 100;
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
   background: rgba(12,26,18,.97);
   backdrop-filter: blur(16px);
   border-bottom: 1px solid rgba(184,150,62,.2);
@@ -155,7 +127,7 @@ em { font-style: italic; color: var(--gold); }
 .hero {
   min-height: 100vh;
   display: flex; flex-direction: column; justify-content: center; align-items: flex-start;
-  padding: 9rem 2rem 4rem;
+  padding: 8rem 2rem 4rem;
   max-width: 1200px; margin: 0 auto;
   position: relative;
 }
@@ -749,7 +721,19 @@ input[type=range]::-webkit-slider-thumb {
 
 /* ─── Pricing ───────────────────────────────────────────────────── */
 .pricing { max-width: 1200px; margin: 0 auto; padding: 7rem 2rem; text-align: center; }
-.pricing h2 { margin-bottom: 3.5rem; }
+.pricing h2 { margin-bottom: 2rem; }
+.pricing-offer {
+  display: flex; align-items: center; justify-content: center;
+  gap: 1.25rem; margin-bottom: 3.5rem;
+}
+.pricing-offer-rule {
+  flex: 1; max-width: 120px; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(184,150,62,.45), transparent);
+}
+.pricing-offer-text {
+  font-size: .68rem; font-weight: 600; letter-spacing: .16em; text-transform: uppercase;
+  color: var(--gold); white-space: nowrap;
+}
 .pricing-grid {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 1px; background: var(--clay); text-align: left;
