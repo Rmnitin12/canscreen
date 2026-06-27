@@ -1717,6 +1717,341 @@ updateFlipCards(null);
   document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
 })();
 
+// ═══════════════════════════════════════════════════════════════
+//  FEATURE 9 · LIVE SKIN SCANNER WITH UV HEATMAP OVERLAY
+// ═══════════════════════════════════════════════════════════════
+
+let lsStream   = null;
+let lsRaf      = null;
+let lsSamples  = [];       // rolling 90-frame window of {type,num,val,r,g,b}
+let lsUvIdx    = 7;
+let lsLastRead = null;
+
+// Face UV-exposure risk zones — cx/cy/rx/ry as fractions of canvas W/H
+const LS_ZONES = [
+  { cx: .50, cy: .19, rx: .27, ry: .09, risk: .88 }, // forehead
+  { cx: .50, cy: .47, rx: .09, ry: .15, risk: 1.0  }, // nose
+  { cx: .30, cy: .53, rx: .16, ry: .13, risk: .72  }, // left cheek (mirrored → real right)
+  { cx: .70, cy: .53, rx: .16, ry: .13, risk: .72  }, // right cheek
+  { cx: .50, cy: .80, rx: .14, ry: .08, risk: .60  }, // chin
+];
+
+// Relative luminance → Fitzpatrick + tone-slider value
+function lsPixelToFitz(r, g, b) {
+  const L = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+  if (L > .80) return { type: 'I',   num: 1, val:   0 };
+  if (L > .66) return { type: 'II',  num: 2, val:  18 };
+  if (L > .50) return { type: 'III', num: 3, val:  36 };
+  if (L > .36) return { type: 'IV',  num: 4, val:  56 };
+  if (L > .20) return { type: 'V',   num: 5, val:  76 };
+  return             { type: 'VI',  num: 6, val: 100 };
+}
+
+// Modal (most-common) fitzpatrick type across sample window
+function lsMode(samples) {
+  const c = {};
+  samples.forEach(s => { c[s.type] = (c[s.type] || 0) + 1; });
+  return Object.entries(c).sort((a, b) => b[1] - a[1])[0]?.[0] || 'II';
+}
+
+// Average RGB across sample window
+function lsAvgRgb(samples) {
+  const n = samples.length;
+  return {
+    r: Math.round(samples.reduce((s, x) => s + x.r, 0) / n),
+    g: Math.round(samples.reduce((s, x) => s + x.g, 0) / n),
+    b: Math.round(samples.reduce((s, x) => s + x.b, 0) / n),
+  };
+}
+
+function lsUpdateReadout() {
+  const n = lsSamples.length;
+  if (!n) return;
+
+  const fitzType = lsMode(lsSamples);
+  const fitzNum  = { I:1, II:2, III:3, IV:4, V:5, VI:6 }[fitzType] || 2;
+  const avg      = lsAvgRgb(lsSamples);
+  const spf      = calcSPF(fitzNum, lsUvIdx, 3); // moderate sensitivity for live scan
+  const conf     = Math.min(100, Math.round((n / 90) * 100));
+
+  lsLastRead = {
+    fitzType, fitzNum, spf,
+    val: lsSamples[lsSamples.length - 1].val,
+    r: avg.r, g: avg.g, b: avg.b,
+  };
+
+  const $ = id => document.getElementById(id);
+
+  const spfEl = $('lsSpfBig');
+  if (spfEl) {
+    const label = `SPF ${spf}`;
+    if (spfEl.textContent !== label) {
+      spfEl.textContent = label;
+      spfEl.style.transform = 'scale(1.08)';
+      setTimeout(() => { if (spfEl) spfEl.style.transform = ''; }, 220);
+    }
+  }
+
+  const subEl = $('lsSpfSub');
+  if (subEl) subEl.textContent =
+    conf >= 90 ? '◆ Profile ready to lock'
+    : conf >= 50 ? 'Hold steady for best accuracy'
+    : 'Reading your skin…';
+
+  const fEl = $('lsFitzVal');
+  if (fEl) fEl.textContent = `Type ${fitzType}`;
+
+  const sw = $('lsToneSwatch');
+  if (sw) sw.style.background = `rgb(${avg.r},${avg.g},${avg.b})`;
+
+  const uvEl = $('lsUvVal');
+  if (uvEl) uvEl.textContent = `${lsUvIdx} — ${uvLabel(lsUvIdx)}`;
+
+  const fill = $('lsConfFill');
+  if (fill) { fill.style.width = conf + '%'; fill.classList.toggle('ready', conf >= 90); }
+  const pct = $('lsConfPct');
+  if (pct) pct.textContent = conf + '%';
+
+  const btn = $('lsLockBtn');
+  if (btn) btn.disabled = conf < 70;
+}
+
+function lsDrawFrame() {
+  const video  = document.getElementById('lsVideo');
+  const canvas = document.getElementById('lsCanvas');
+  if (!video || !canvas || video.readyState < 2) {
+    lsRaf = requestAnimationFrame(lsDrawFrame);
+    return;
+  }
+
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const t = Date.now();
+
+  // 1. Draw mirrored video frame (selfie-cam feel)
+  ctx.save();
+  ctx.translate(W, 0);
+  ctx.scale(-1, 1);
+  ctx.drawImage(video, 0, 0, W, H);
+  ctx.restore();
+
+  // 2. UV heatmap zone overlays — amber elliptical gradients, pulsing with UV intensity
+  const uvFactor = Math.min(1, lsUvIdx / 12);
+  const pulse    = (Math.sin(t * 0.0024) + 1) * 0.5; // 0→1 over ~2.6s
+
+  LS_ZONES.forEach(z => {
+    const cx = z.cx * W, cy = z.cy * H;
+    const rx = z.rx * W, ry = z.ry * H;
+    const alpha = z.risk * uvFactor * (0.30 + pulse * 0.22);
+
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.scale(1, ry / rx);
+    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, rx);
+    g.addColorStop(0,    `rgba(228, 88, 18, ${Math.min(.72, alpha * 1.5).toFixed(3)})`);
+    g.addColorStop(0.55, `rgba(205, 62,  8, ${(alpha * .6).toFixed(3)})`);
+    g.addColorStop(1,    'rgba(185, 45, 0, 0)');
+    ctx.beginPath();
+    ctx.arc(0, 0, rx, 0, Math.PI * 2);
+    ctx.fillStyle = g;
+    ctx.fill();
+    ctx.restore();
+  });
+
+  // 3. Face guide ellipse — dashed gold ring
+  const gx = W / 2, gy = H * .466;
+  const grx = W * .275, gry = H * .368;
+  ctx.beginPath();
+  ctx.ellipse(gx, gy, grx, gry, 0, 0, Math.PI * 2);
+  ctx.strokeStyle = `rgba(184,150,62,${(.42 + pulse * .32).toFixed(2)})`;
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([10, 6]);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Diamond markers at cardinal points of the ellipse
+  [[gx, gy - gry], [gx, gy + gry], [gx - grx, gy], [gx + grx, gy]].forEach(([dx, dy]) => {
+    ctx.beginPath();
+    ctx.arc(dx, dy, 2.8, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(184,150,62,${(.55 + pulse * .35).toFixed(2)})`;
+    ctx.fill();
+  });
+
+  // 4. Horizontal scan line sweeping top → bottom
+  const scanY = ((t * 0.095) % (H * 1.55)) - H * 0.28;
+  if (scanY > -20 && scanY < H + 20) {
+    const sg = ctx.createLinearGradient(0, scanY - 14, 0, scanY + 14);
+    sg.addColorStop(0,    'rgba(184,150,62,0)');
+    sg.addColorStop(0.5,  'rgba(184,150,62,.32)');
+    sg.addColorStop(1,    'rgba(184,150,62,0)');
+    ctx.fillStyle = sg;
+    ctx.fillRect(0, scanY - 14, W, 28);
+  }
+
+  // 5. Sample pixels from three face zones (symmetric — mirroring doesn't matter)
+  const SP = 14;
+  const sampleAt = (fx, fy) => {
+    const sx = Math.round(fx * W), sy = Math.round(fy * H);
+    const ox = Math.max(SP, Math.min(W - SP, sx));
+    const oy = Math.max(SP, Math.min(H - SP, sy));
+    try { return ctx.getImageData(ox - SP, oy - SP, SP * 2, SP * 2).data; }
+    catch (_) { return null; }
+  };
+
+  const zones = [
+    sampleAt(.50, .22), // forehead center
+    sampleAt(.35, .53), // left on screen → right cheek in real life
+    sampleAt(.65, .53), // right on screen → left cheek
+  ];
+
+  let rT = 0, gT = 0, bT = 0, cnt = 0;
+  zones.forEach(data => {
+    if (!data) return;
+    for (let i = 0; i < data.length; i += 4) {
+      rT += data[i]; gT += data[i + 1]; bT += data[i + 2]; cnt++;
+    }
+  });
+
+  if (cnt > 0) {
+    const r = Math.round(rT / cnt), g = Math.round(gT / cnt), b = Math.round(bT / cnt);
+    const fitz = lsPixelToFitz(r, g, b);
+    lsSamples.push({ ...fitz, r, g, b });
+    if (lsSamples.length > 90) lsSamples.shift();
+    lsUpdateReadout();
+  }
+
+  lsRaf = requestAnimationFrame(lsDrawFrame);
+}
+
+async function openLiveScan() {
+  const overlay = document.getElementById('lsOverlay');
+  if (!overlay) return;
+
+  lsSamples  = [];
+  lsLastRead = null;
+
+  // Seed UV from location input
+  const locVal = document.getElementById('locationInput')?.value || 'San Francisco, CA';
+  lsUvIdx = getUVForLocation(locVal);
+  const cityEl = document.getElementById('lsUvCity');
+  if (cityEl) cityEl.textContent = locVal.replace(/,.*/, '').trim();
+
+  // Reset readout UI
+  const reset = { lsSpfBig: '—', lsFitzVal: 'Reading…', lsUvVal: '—', lsConfPct: '0%' };
+  Object.entries(reset).forEach(([id, val]) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = val;
+  });
+  const fill = document.getElementById('lsConfFill');
+  if (fill) { fill.style.width = '0%'; fill.classList.remove('ready'); }
+  const lock = document.getElementById('lsLockBtn');
+  if (lock) lock.disabled = true;
+  const sub = document.getElementById('lsSpfSub');
+  if (sub) sub.textContent = 'Hold steady…';
+  const err = document.getElementById('lsError');
+  if (err) err.textContent = '';
+
+  overlay.classList.add('visible');
+  document.body.style.overflow = 'hidden';
+
+  // Try real UV via geolocation (non-blocking)
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(async pos => {
+      try {
+        const uv = await fetchUVForCoords(pos.coords.latitude, pos.coords.longitude);
+        if (uv !== null) lsUvIdx = uv;
+      } catch (_) {}
+    });
+  }
+
+  // Start camera
+  const video  = document.getElementById('lsVideo');
+  const canvas = document.getElementById('lsCanvas');
+  if (!navigator.mediaDevices?.getUserMedia) {
+    if (err) err.textContent = 'Camera not supported in this browser.';
+    return;
+  }
+  try {
+    lsStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 800 } },
+    });
+    video.srcObject = lsStream;
+    video.play();
+    // Sync canvas resolution to actual video track
+    video.addEventListener('loadedmetadata', () => {
+      const vw = video.videoWidth || 400;
+      const vh = video.videoHeight || 530;
+      // keep portrait aspect, cap at 530 tall
+      const scale = Math.min(1, 530 / vh);
+      canvas.width  = Math.round(vw * scale);
+      canvas.height = Math.round(vh * scale);
+    }, { once: true });
+    lsRaf = requestAnimationFrame(lsDrawFrame);
+  } catch (_) {
+    if (err) err.textContent = 'Camera access required. Please allow camera permission and try again.';
+  }
+}
+
+function closeLiveScan() {
+  const overlay = document.getElementById('lsOverlay');
+  if (overlay) overlay.classList.remove('visible');
+  document.body.style.overflow = '';
+  if (lsStream) { lsStream.getTracks().forEach(t => t.stop()); lsStream = null; }
+  if (lsRaf)   { cancelAnimationFrame(lsRaf); lsRaf = null; }
+  lsSamples  = [];
+  lsLastRead = null;
+}
+
+function lsLockProfile() {
+  if (!lsLastRead) return;
+  const { fitzType, val } = lsLastRead;
+
+  // Gold flash on canvas before closing
+  const canvas = document.getElementById('lsCanvas');
+  if (canvas) {
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = 'rgba(184,150,62,.26)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
+  if (lsRaf) { cancelAnimationFrame(lsRaf); lsRaf = null; }
+
+  setTimeout(() => {
+    closeLiveScan();
+
+    // Apply to tone slider — triggers fitzpatrick swatch sync
+    const ts = document.getElementById('toneSlider');
+    if (ts) { ts.value = val; ts.dispatchEvent(new Event('input')); }
+
+    // Explicitly click the matching swatch for certainty
+    const sw = [...document.querySelectorAll('.fitz-swatch')]
+      .find(s => s.dataset.type === fitzType);
+    if (sw) sw.click();
+
+    // Scroll to upload form
+    document.getElementById('upload')?.scrollIntoView({ behavior: 'smooth' });
+
+    // Flash analyse button to signal "ready to go"
+    setTimeout(() => {
+      const btn = document.getElementById('analyseBtn');
+      if (!btn) return;
+      const origText = btn.innerHTML;
+      btn.innerHTML = '◆ Profile locked — Build your formula →';
+      btn.style.boxShadow = '0 0 0 3px var(--gold), 0 0 28px rgba(184,150,62,.38)';
+      setTimeout(() => {
+        btn.innerHTML = origText;
+        btn.style.boxShadow = '';
+      }, 3500);
+    }, 900);
+  }, 480);
+}
+
+document.getElementById('lsOpenBtn')?.addEventListener('click', openLiveScan);
+document.getElementById('lsCancel')?.addEventListener('click', closeLiveScan);
+document.getElementById('lsLockBtn')?.addEventListener('click', lsLockProfile);
+document.getElementById('lsOverlay')?.addEventListener('click', e => {
+  if (e.target === document.getElementById('lsOverlay')) closeLiveScan();
+});
+
 /* ─── FAQ accordion ─────────────────────────────────────────────── */
 document.querySelectorAll('.faq-q').forEach(btn => {
   btn.addEventListener('click', () => {

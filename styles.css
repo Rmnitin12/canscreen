@@ -1323,7 +1323,143 @@ input[type=range]::-webkit-slider-thumb {
   border: 1px solid rgba(255,255,255,.1); padding: .3rem .9rem;
 }
 
+/* ─── Live Skin Scanner ─────────────────────────────────────────── */
+.hero-ctas { display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; }
+
+.ls-dot {
+  display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+  background: var(--gold); flex-shrink: 0;
+  animation: ls-pulse 1.8s ease infinite;
+}
+@keyframes ls-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: .35; transform: scale(.65); }
+}
+
+.ls-overlay {
+  position: fixed; inset: 0; z-index: 9994;
+  background: rgba(12,26,18,.95); backdrop-filter: blur(16px);
+  display: none; align-items: center; justify-content: center; padding: 1.25rem;
+}
+.ls-overlay.visible { display: flex; }
+
+.ls-modal {
+  display: grid; grid-template-columns: 1fr 320px;
+  width: 100%; max-width: 800px; max-height: 92vh;
+  background: var(--forest); border: 1px solid rgba(184,150,62,.2);
+  overflow: hidden;
+}
+
+/* Camera side */
+.ls-cam-side {
+  background: #040d07;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 1.5rem 1.25rem 1rem;
+}
+.ls-cam-wrap {
+  position: relative; width: 100%; max-width: 340px;
+  aspect-ratio: 3 / 4; background: #000; overflow: hidden;
+}
+#lsVideo {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%; object-fit: cover;
+  opacity: 0; /* hidden — canvas renders the mirrored feed */
+}
+#lsCanvas {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%; display: block;
+}
+.ls-cam-hint {
+  font-size: .6rem; letter-spacing: .1em; text-transform: uppercase;
+  color: rgba(255,255,255,.2); margin-top: .7rem; text-align: center;
+}
+.ls-error {
+  font-size: .74rem; color: #ef9a9a; text-align: center;
+  margin-top: .45rem; min-height: 1em; line-height: 1.4;
+}
+
+/* Readout panel */
+.ls-readout {
+  padding: 1.75rem 1.5rem;
+  display: flex; flex-direction: column; gap: 1.1rem;
+  border-left: 1px solid rgba(184,150,62,.14);
+  overflow-y: auto;
+}
+.ls-readout-label {
+  color: var(--gold-light) !important; margin-bottom: 0 !important;
+}
+.ls-readout-label::before { background: var(--gold-light) !important; }
+
+.ls-spf-label {
+  font-size: .6rem; font-weight: 600; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--clay); margin-bottom: .3rem;
+}
+.ls-spf-big {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 3.6rem; font-weight: 700; color: var(--gold);
+  line-height: 1; letter-spacing: -.03em;
+  transition: transform .25s cubic-bezier(.34,1.56,.64,1), color .3s;
+}
+.ls-spf-sub {
+  font-size: .66rem; color: rgba(255,255,255,.28);
+  font-style: italic; letter-spacing: .04em; margin-top: .2rem;
+}
+
+.ls-metrics { display: flex; flex-direction: column; }
+.ls-metric-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: .6rem 0; border-bottom: 1px solid rgba(255,255,255,.05);
+}
+.ls-metric-row:first-child { border-top: 1px solid rgba(255,255,255,.05); }
+.ls-metric-key {
+  font-size: .62rem; font-weight: 600; letter-spacing: .1em;
+  text-transform: uppercase; color: rgba(255,255,255,.28);
+}
+.ls-metric-val {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: .9rem; color: var(--cream); letter-spacing: .02em;
+}
+.ls-tone-swatch {
+  width: 32px; height: 18px;
+  border: 1px solid rgba(255,255,255,.15);
+  transition: background .35s;
+}
+
+.ls-confidence { display: flex; flex-direction: column; gap: .45rem; }
+.ls-conf-header { display: flex; justify-content: space-between; align-items: center; }
+.ls-conf-label {
+  font-size: .6rem; font-weight: 600; letter-spacing: .1em;
+  text-transform: uppercase; color: rgba(255,255,255,.28);
+}
+.ls-conf-pct {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: .88rem; font-weight: 700; color: var(--gold);
+}
+.ls-conf-track {
+  height: 3px; background: rgba(255,255,255,.07); overflow: hidden;
+}
+.ls-conf-fill {
+  height: 100%; width: 0%;
+  background: var(--gold);
+  transition: width .45s ease, background .5s;
+}
+.ls-conf-fill.ready { background: #66bb6a; }
+
+.ls-lock-btn {
+  width: 100%; justify-content: center;
+  background: var(--gold); color: var(--forest); font-weight: 600;
+}
+.ls-lock-btn:disabled {
+  opacity: .28; pointer-events: none;
+}
+.ls-cancel-btn { width: 100%; justify-content: center; font-size: .72rem; }
+
 /* ─── Responsive ────────────────────────────────────────────────── */
+@media (max-width: 760px) {
+  .ls-modal { grid-template-columns: 1fr; }
+  .ls-readout { border-left: none; border-top: 1px solid rgba(184,150,62,.14); padding: 1.25rem; }
+  .ls-spf-big { font-size: 2.6rem; }
+}
 @media (max-width: 900px) {
   .hero-visual { display: none; }
   .upload-wrapper { grid-template-columns: 1fr; }

@@ -74,7 +74,12 @@
   <section class="hero" id="start">
     <h1>Sunscreen <em>for your skin,</em><br>by your skin.</h1>
     <p class="hero-sub">Upload a photo, tell us where you live. We'll build a bespoke SPF formula and ship it to you every season.</p>
-    <a href="#upload" class="btn btn-hero">Analyse my skin →</a>
+    <div class="hero-ctas">
+      <a href="#upload" class="btn btn-hero">Analyse my skin →</a>
+      <button class="btn btn-outline btn-hero ls-open-btn" id="lsOpenBtn">
+        <span class="ls-dot" aria-hidden="true"></span>Scan skin live
+      </button>
+    </div>
     <div class="hero-visual">
       <div class="uv-ring" aria-hidden="true">
         <div class="uv-ring-inner"></div>
@@ -995,6 +1000,62 @@
       </div>
     </div>
   </footer>
+
+  <!-- LIVE SKIN SCANNER MODAL -->
+  <div class="ls-overlay" id="lsOverlay">
+    <div class="ls-modal">
+
+      <!-- Left: camera canvas -->
+      <div class="ls-cam-side">
+        <div class="ls-cam-wrap">
+          <video id="lsVideo" autoplay playsinline muted></video>
+          <canvas id="lsCanvas" width="400" height="530"></canvas>
+        </div>
+        <p class="ls-cam-hint">Centre your face within the dashed guide</p>
+        <p class="ls-error" id="lsError"></p>
+      </div>
+
+      <!-- Right: live readout panel -->
+      <div class="ls-readout">
+        <div class="section-label ls-readout-label">Live skin analysis</div>
+
+        <div class="ls-spf-block">
+          <div class="ls-spf-label">Recommended SPF</div>
+          <div class="ls-spf-big" id="lsSpfBig">—</div>
+          <div class="ls-spf-sub" id="lsSpfSub">Hold steady…</div>
+        </div>
+
+        <div class="ls-metrics">
+          <div class="ls-metric-row">
+            <span class="ls-metric-key">Fitzpatrick type</span>
+            <span class="ls-metric-val" id="lsFitzVal">Reading…</span>
+          </div>
+          <div class="ls-metric-row">
+            <span class="ls-metric-key">Detected tone</span>
+            <div class="ls-tone-swatch" id="lsToneSwatch"></div>
+          </div>
+          <div class="ls-metric-row">
+            <span class="ls-metric-key">UV · <span id="lsUvCity">your area</span></span>
+            <span class="ls-metric-val" id="lsUvVal">—</span>
+          </div>
+        </div>
+
+        <div class="ls-confidence">
+          <div class="ls-conf-header">
+            <span class="ls-conf-label">Reading confidence</span>
+            <span class="ls-conf-pct" id="lsConfPct">0%</span>
+          </div>
+          <div class="ls-conf-track">
+            <div class="ls-conf-fill" id="lsConfFill"></div>
+          </div>
+        </div>
+
+        <button class="btn ls-lock-btn" id="lsLockBtn" disabled>◆ Lock my profile</button>
+        <button class="btn btn-outline ls-cancel-btn" id="lsCancel">Cancel</button>
+      </div>
+
+    </div>
+  </div>
 
   <!-- BOX UNBOXING MODAL -->
   <div class="unbox-overlay" id="unboxOverlay">
