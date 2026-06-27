@@ -1458,12 +1458,29 @@ function runUnboxAnimation(spf, formulaId) {
   setTimeout(() => { if (msg) msg.classList.add('visible'); }, 1300);
 }
 
-// Pricing card flip
-document.querySelectorAll('.plan-wrap').forEach(card => {
-  card.addEventListener('click', () => card.classList.toggle('flipped'));
+// Pricing card 3D tilt
+document.querySelectorAll('.plan-tilt').forEach(card => {
+  const shine = card.querySelector('.plan-shine');
+  const MAX = 10; // max tilt degrees
+
+  card.addEventListener('mousemove', e => {
+    const r = card.getBoundingClientRect();
+    const x = (e.clientX - r.left) / r.width  - 0.5; // -0.5 → 0.5
+    const y = (e.clientY - r.top)  / r.height - 0.5;
+    card.style.transition = 'box-shadow .1s';
+    card.style.transform = `perspective(800px) rotateY(${x * MAX}deg) rotateX(${-y * MAX}deg) scale3d(1.02,1.02,1.02)`;
+    card.style.boxShadow = `${-x * 18}px ${-y * 18}px 40px rgba(12,26,18,.13)`;
+    if (shine) shine.style.backgroundImage = `radial-gradient(circle at ${(x+.5)*100}% ${(y+.5)*100}%, rgba(255,255,255,.09) 0%, transparent 65%)`;
+  });
+
+  card.addEventListener('mouseleave', () => {
+    card.style.transition = 'transform .6s cubic-bezier(.03,.98,.52,.99), box-shadow .6s ease';
+    card.style.transform = 'perspective(800px) rotateY(0deg) rotateX(0deg) scale3d(1,1,1)';
+    card.style.boxShadow = '';
+  });
 });
 
-// Subscribe buttons: trigger unbox without re-flipping the card
+// Subscribe buttons
 document.querySelectorAll('.plan-subscribe').forEach(btn => {
   btn.addEventListener('click', e => {
     e.stopPropagation();
