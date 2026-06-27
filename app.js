@@ -2046,6 +2046,7 @@ function lsLockProfile() {
 }
 
 document.getElementById('lsOpenBtn')?.addEventListener('click', openLiveScan);
+document.getElementById('uploadScanBtn')?.addEventListener('click', openLiveScan);
 document.getElementById('lsCancel')?.addEventListener('click', closeLiveScan);
 document.getElementById('lsLockBtn')?.addEventListener('click', lsLockProfile);
 document.getElementById('lsOverlay')?.addEventListener('click', e => {

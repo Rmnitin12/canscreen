@@ -1323,6 +1323,29 @@ input[type=range]::-webkit-slider-thumb {
   border: 1px solid rgba(255,255,255,.1); padding: .3rem .9rem;
 }
 
+/* ─── Upload or / scan button ───────────────────────────────────── */
+.upload-or {
+  display: flex; align-items: center; gap: .75rem; margin: 1rem 0 .75rem;
+}
+.upload-or-rule { flex: 1; height: 1px; background: var(--clay); opacity: .45; }
+.upload-or-text {
+  font-size: .62rem; font-weight: 600; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--muted);
+}
+.upload-scan-btn {
+  display: flex; align-items: center; justify-content: center; gap: .6rem;
+  width: 100%; padding: .78rem 1rem;
+  background: none; border: 1.5px solid var(--clay);
+  font-family: 'Jost', sans-serif; font-size: .78rem;
+  font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--muted); cursor: pointer;
+  transition: border-color .18s, color .18s, background .18s;
+}
+.upload-scan-btn:hover {
+  border-color: var(--gold); color: var(--gold);
+  background: rgba(184,150,62,.05);
+}
+
 /* ─── Live Skin Scanner ─────────────────────────────────────────── */
 .hero-ctas { display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; }
 
