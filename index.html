@@ -1063,32 +1063,8 @@
   </div>
 
   <!-- Custom sun cursor -->
-  <div class="cursor-sun" id="cursorSun" aria-hidden="true">
-    <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <filter id="cursor-glow-f" x="-60%" y="-60%" width="220%" height="220%">
-          <feGaussianBlur stdDeviation="2.5" result="blur"/>
-          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-        </filter>
-      </defs>
-      <g class="sun-rays-group">
-        <line x1="24" y1="3" x2="24" y2="10" stroke="#d4b06a" stroke-width="1.5" stroke-linecap="round"/>
-        <line x1="24" y1="38" x2="24" y2="45" stroke="#d4b06a" stroke-width="1.5" stroke-linecap="round"/>
-        <line x1="3" y1="24" x2="10" y2="24" stroke="#d4b06a" stroke-width="1.5" stroke-linecap="round"/>
-        <line x1="38" y1="24" x2="45" y2="24" stroke="#d4b06a" stroke-width="1.5" stroke-linecap="round"/>
-        <line x1="8.5" y1="8.5" x2="13.5" y2="13.5" stroke="#d4b06a" stroke-width="1.5" stroke-linecap="round"/>
-        <line x1="34.5" y1="34.5" x2="39.5" y2="39.5" stroke="#d4b06a" stroke-width="1.5" stroke-linecap="round"/>
-        <line x1="39.5" y1="8.5" x2="34.5" y2="13.5" stroke="#d4b06a" stroke-width="1.5" stroke-linecap="round"/>
-        <line x1="13.5" y1="34.5" x2="8.5" y2="39.5" stroke="#d4b06a" stroke-width="1.5" stroke-linecap="round"/>
-        <circle cx="24" cy="24" r="14" stroke="rgba(212,176,106,0.25)" stroke-width="0.8" fill="none"/>
-      </g>
-      <g class="sun-core-group">
-        <circle cx="24" cy="24" r="9" fill="#b8963e" opacity="0.9" filter="url(#cursor-glow-f)"/>
-        <circle cx="24" cy="24" r="5.5" fill="#f0d870" opacity="0.88"/>
-        <circle cx="24" cy="24" r="2" fill="rgba(255,255,255,0.92)"/>
-      </g>
-    </svg>
-  </div>
+  <div class="cursor-dot" id="cursorDot" aria-hidden="true"></div>
+  <div class="cursor-glow" id="cursorGlow" aria-hidden="true"></div>
   <script src="app.js"></script>
 </body>
 </html>

@@ -944,38 +944,38 @@ updateFacePreviews();
 //  CUSTOM SUN CURSOR
 // ═══════════════════════════════════════════════════════════════
 
-const cursorSun = document.getElementById('cursorSun');
-let cx = window.innerWidth / 2, cy = window.innerHeight / 2;
-let tx = cx, ty = cy;
+const cursorDot  = document.getElementById('cursorDot');
+const cursorGlow = document.getElementById('cursorGlow');
+// dot tracks mouse exactly; glow lerps behind
+let tx = window.innerWidth / 2, ty = window.innerHeight / 2;
+let gx = tx, gy = ty;
 let cursorReady = false;
 
 document.addEventListener('mousemove', e => {
-  tx = e.clientX;
-  ty = e.clientY;
+  tx = e.clientX; ty = e.clientY;
   if (!cursorReady) {
-    // snap to real position on first move so cursor doesn't swim in
-    cx = tx; cy = ty;
+    gx = tx; gy = ty;
     cursorReady = true;
-    if (cursorSun) cursorSun.style.opacity = '1';
+    if (cursorDot)  { cursorDot.style.opacity  = '1'; }
+    if (cursorGlow) { cursorGlow.style.opacity  = '1'; }
   }
+  if (cursorDot) { cursorDot.style.left = tx + 'px'; cursorDot.style.top = ty + 'px'; }
 }, { passive: true });
 
-if (cursorSun) cursorSun.style.opacity = '0';
-
-(function animateCursor() {
-  cx += (tx - cx) * 0.18;
-  cy += (ty - cy) * 0.18;
-  if (cursorSun) {
-    cursorSun.style.left = cx + 'px';
-    cursorSun.style.top  = cy + 'px';
+(function animateGlow() {
+  gx += (tx - gx) * 0.1;
+  gy += (ty - gy) * 0.1;
+  if (cursorGlow) {
+    cursorGlow.style.left = gx + 'px';
+    cursorGlow.style.top  = gy + 'px';
   }
-  requestAnimationFrame(animateCursor);
+  requestAnimationFrame(animateGlow);
 })();
 
 document.addEventListener('mouseover', e => {
-  if (!cursorSun) return;
   const interactive = e.target.closest('button,a,input,label,.chip,.fitz-swatch,.option-toggle,.drop-zone');
-  cursorSun.classList.toggle('hovering', !!interactive);
+  cursorDot  && cursorDot.classList.toggle('hovering',  !!interactive);
+  cursorGlow && cursorGlow.classList.toggle('hovering', !!interactive);
 });
 
 // ═══════════════════════════════════════════════════════════════
