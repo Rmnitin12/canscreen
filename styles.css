@@ -1540,6 +1540,159 @@ input[type=range]::-webkit-slider-thumb {
   border: none; border-radius: 0; cursor: pointer;
 }
 
+/* ─── Sun Position Clock ─────────────────────────────────────────── */
+.sun-clock {
+  background: var(--cream);
+  border-top: 1px solid var(--clay);
+  padding: 7rem 2rem;
+}
+.sun-clock-inner {
+  max-width: 920px;
+  margin: 0 auto;
+  text-align: center;
+}
+.sun-clock h2 { margin-bottom: 3.5rem; }
+
+.sun-clock-layout {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 3.5rem;
+  align-items: start;
+  text-align: left;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.sun-dial-wrap {
+  position: relative;
+  width: 300px;
+  flex-shrink: 0;
+}
+.sun-dial {
+  display: block;
+  width: 300px;
+  height: 300px;
+  border-radius: 50%;
+}
+.sun-dial-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.sun-alt-now {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--forest);
+  line-height: 1;
+  transition: color .4s;
+}
+.sun-alt-now.danger { color: #c0392b; }
+.sun-alt-lbl {
+  font-size: .56rem;
+  font-weight: 600;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: rgba(30,50,35,.35);
+  margin-top: .3rem;
+}
+
+.sun-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1.4rem;
+  padding-top: .4rem;
+}
+
+.sun-status {
+  display: flex;
+  flex-direction: column;
+  gap: .35rem;
+  padding: .9rem 1.1rem;
+  border-left: 3px solid var(--clay);
+  transition: border-color .4s;
+}
+.sun-status.danger { border-color: #e74c3c; }
+.sun-status.safe   { border-color: #27ae60; }
+
+.sun-status-badge {
+  font-size: .58rem;
+  font-weight: 700;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: rgba(30,50,35,.35);
+  transition: color .4s;
+}
+.sun-status.danger .sun-status-badge { color: #e74c3c; }
+.sun-status.safe   .sun-status-badge { color: #27ae60; }
+
+.sun-status-desc {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.18rem;
+  color: var(--forest);
+  line-height: 1.35;
+}
+
+.sun-countdown-row {
+  display: flex;
+  align-items: baseline;
+  gap: .85rem;
+}
+.sun-cd-label {
+  font-size: .6rem;
+  font-weight: 600;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: rgba(30,50,35,.4);
+  white-space: nowrap;
+}
+.sun-countdown {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 2.1rem;
+  font-weight: 700;
+  color: var(--forest);
+  letter-spacing: .03em;
+  line-height: 1;
+}
+
+.sun-stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-top: 1px solid var(--clay);
+  border-left: 1px solid var(--clay);
+}
+.sun-stat {
+  display: flex;
+  flex-direction: column;
+  gap: .2rem;
+  padding: .65rem .85rem;
+  border-right: 1px solid var(--clay);
+  border-bottom: 1px solid var(--clay);
+}
+.sun-stat-k {
+  font-size: .56rem;
+  font-weight: 600;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: rgba(30,50,35,.35);
+}
+.sun-stat-v {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.08rem;
+  font-weight: 600;
+  color: var(--forest);
+}
+.sun-loc-label {
+  font-size: .65rem;
+  color: rgba(30,50,35,.4);
+  letter-spacing: .05em;
+  margin: 0;
+}
+
 /* ─── Responsive ────────────────────────────────────────────────── */
 @media (max-width: 760px) {
   .ls-modal { grid-template-columns: 1fr; }
@@ -1556,6 +1709,8 @@ input[type=range]::-webkit-slider-thumb {
   .spf-timer-widget { grid-template-columns: 1fr; justify-items: center; gap: 2rem; }
   .aging-faces { flex-direction: column; align-items: center; }
   .aging-face-outer { width: 200px; }
+  .sun-clock-layout { grid-template-columns: 1fr; justify-items: center; gap: 2.5rem; }
+  .sun-panel { width: 100%; max-width: 300px; }
 }
 @media (max-width: 640px) {
   .uv-legend { gap: .8rem; }

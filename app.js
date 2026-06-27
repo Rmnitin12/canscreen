@@ -2169,3 +2169,371 @@ if (waitlistForm && waitlistSuccess) {
     waitlistSuccess.classList.add('visible');
   });
 }
+
+// ═══════════════════════════════════════════════════════════════
+//  FEATURE 10 · REAL-TIME SUN POSITION CLOCK
+// ═══════════════════════════════════════════════════════════════
+
+let scLat = 37.77, scLng = -122.42;
+let scTimes = null;
+let scRunning = false, scRaf = null, scLastTick = 0;
+
+// ── Solar position (NOAA simplified, ±1° accuracy) ──────────────
+function scSunPos(date, lat, lng) {
+  const D2R = Math.PI / 180;
+  const JD  = date.getTime() / 864e5 + 2440587.5;
+  const n   = JD - 2451545.0;
+  const L   = (280.46646 + 0.9856474 * n) % 360;
+  const M   = ((357.52911 + 0.9856003 * n) % 360) * D2R;
+  const C   = 1.914602 * Math.sin(M) + 0.019993 * Math.sin(2 * M) + 0.000289 * Math.sin(3 * M);
+  const sunL = (L + C) * D2R;
+  const eps  = (23.439291 - 0.013004 * n / 36525) * D2R;
+  const sinDec = Math.sin(eps) * Math.sin(sunL);
+  const dec    = Math.asin(sinDec);
+  const RA     = Math.atan2(Math.cos(eps) * Math.sin(sunL), Math.cos(sunL));
+  const GMST   = (280.46061837 + 360.98564736629 * n) % 360;
+  const LST    = ((GMST + lng) % 360 + 360) % 360;
+  const HA     = (LST * D2R - RA);
+  const latR   = lat * D2R;
+  const sinAlt = Math.sin(latR) * sinDec + Math.cos(latR) * Math.cos(dec) * Math.cos(HA);
+  const alt    = Math.asin(Math.max(-1, Math.min(1, sinAlt)));
+  const sinAz  = -Math.cos(dec) * Math.sin(HA) / Math.cos(alt);
+  const cosAz  = (sinDec - Math.sin(alt) * Math.sin(latR)) / (Math.cos(alt) * Math.cos(latR));
+  const az     = ((Math.atan2(sinAz, cosAz) / D2R) + 360) % 360;
+  return { altitude: alt / D2R, azimuth: az };
+}
+
+// ── Sunrise / sunset / noon (UTC hours) ─────────────────────────
+function scSunTimes(date, lat, lng) {
+  const D2R = Math.PI / 180;
+  const d   = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 12));
+  const JD  = d.getTime() / 864e5 + 2440587.5;
+  const n   = JD - 2451545.0;
+  const L   = (280.46646 + 0.9856474 * n) % 360;
+  const M   = ((357.52911 + 0.9856003 * n) % 360) * D2R;
+  const C   = 1.914602 * Math.sin(M) + 0.019993 * Math.sin(2 * M);
+  const sunL = (L + C) * D2R;
+  const eps  = 23.439291 * D2R;
+  const sinDec = Math.sin(eps) * Math.sin(sunL);
+  const dec    = Math.asin(sinDec);
+  const latR   = lat * D2R;
+  const cosHA  = (Math.sin(-0.8333 * D2R) - Math.sin(latR) * sinDec) / (Math.cos(latR) * Math.cos(dec));
+  if (Math.abs(cosHA) > 1) return null;
+  const HA     = Math.acos(cosHA) / D2R;
+  const noon   = (12 - lng / 15 + 24) % 24;
+  return {
+    sunrise: ((noon - HA / 15) % 24 + 24) % 24,
+    noon:    noon,
+    sunset:  ((noon + HA / 15) % 24 + 24) % 24,
+  };
+}
+
+// ── Helpers ──────────────────────────────────────────────────────
+function scFmtHM(utcH) {
+  const off   = -new Date().getTimezoneOffset() / 60;
+  const local = ((utcH + off) % 24 + 24) % 24;
+  const h     = Math.floor(local);
+  const m     = Math.floor((local - h) * 60);
+  const ap    = h >= 12 ? 'pm' : 'am';
+  return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${ap}`;
+}
+function scFmtCD(secs) {
+  if (secs <= 0) return '0:00:00';
+  const h = Math.floor(secs / 3600);
+  const m = Math.floor((secs % 3600) / 60);
+  const s = secs % 60;
+  return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+function scAltToUV(alt) {
+  if (alt < 5)  return 0;
+  if (alt < 15) return 1;
+  if (alt < 25) return 2 + Math.round((alt - 15) / 5);
+  if (alt < 40) return 4 + Math.round((alt - 25) / 5);
+  if (alt < 55) return 7 + Math.round((alt - 40) / 8);
+  if (alt < 70) return 9 + Math.round((alt - 55) / 8);
+  return 11;
+}
+function scUvLabel(uv) {
+  if (uv <= 2)  return 'Low';
+  if (uv <= 5)  return 'Moderate';
+  if (uv <= 7)  return 'High';
+  if (uv <= 10) return 'Very High';
+  return 'Extreme';
+}
+function scNextCrossing(lat, lng, isDanger) {
+  const now = Date.now();
+  const step = isDanger ? 60 : 300;
+  const limit = isDanger ? 18000 : 86400;
+  for (let s = step; s <= limit; s += step) {
+    const fp = scSunPos(new Date(now + s * 1000), lat, lng);
+    if (isDanger && fp.altitude < 30) return s;
+    if (!isDanger && fp.altitude > 0) return s;
+  }
+  return null;
+}
+
+// ── Canvas renderer ──────────────────────────────────────────────
+const SC_STARS = [
+  [.18,.13],[.82,.11],[.11,.70],[.87,.74],[.44,.07],
+  [.66,.20],[.28,.58],[.77,.53],[.54,.87],[.08,.38],
+  [.93,.42],[.35,.22],[.62,.68],[.50,.14],[.72,.37],
+];
+
+function scDraw(lat, lng, times) {
+  const canvas = document.getElementById('sunDial');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const CX = W / 2, CY = H / 2, R = W / 2 - 22;
+  const t  = Date.now();
+
+  ctx.clearRect(0, 0, W, H);
+
+  // Background circle
+  const bg = ctx.createRadialGradient(CX, CY, 0, CX, CY, R + 22);
+  bg.addColorStop(0,   '#112018');
+  bg.addColorStop(.65, '#0d1a12');
+  bg.addColorStop(1,   '#080d09');
+  ctx.beginPath(); ctx.arc(CX, CY, R + 18, 0, Math.PI * 2);
+  ctx.fillStyle = bg; ctx.fill();
+
+  // Stars (outside inner 35% only)
+  SC_STARS.forEach(([fx, fy]) => {
+    const sx = fx * W, sy = fy * H;
+    if (Math.hypot(sx - CX, sy - CY) < R * .3) return;
+    const tw = (Math.sin(t * .0009 + fx * 17 + fy * 11) + 1) * .5;
+    ctx.beginPath(); ctx.arc(sx, sy, .85, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(248,245,240,${(.12 + tw * .22).toFixed(2)})`; ctx.fill();
+  });
+
+  // Altitude rings — 30° and 60°
+  [30, 60].forEach(alt => {
+    const r = (1 - alt / 90) * R;
+    ctx.beginPath(); ctx.arc(CX, CY, r, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(184,150,62,.07)'; ctx.lineWidth = .8; ctx.stroke();
+    ctx.fillStyle   = 'rgba(184,150,62,.25)';
+    ctx.font = '500 7.5px Jost,sans-serif';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.fillText(`${alt}°`, CX + r + 4, CY);
+  });
+
+  // Outer ring
+  ctx.beginPath(); ctx.arc(CX, CY, R, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(184,150,62,.25)'; ctx.lineWidth = 1; ctx.stroke();
+
+  // Cardinal labels
+  [['N', 0], ['E', 90], ['S', 180], ['W', 270]].forEach(([lbl, az]) => {
+    const a  = az * Math.PI / 180;
+    const lx = CX + (R + 13) * Math.sin(a);
+    const ly = CY - (R + 13) * Math.cos(a);
+    ctx.fillStyle = lbl === 'N' ? 'rgba(184,150,62,.8)' : 'rgba(197,185,154,.4)';
+    ctx.font = `${lbl === 'N' ? 700 : 500} 8.5px Jost,sans-serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(lbl, lx, ly);
+  });
+
+  // Build today's sun path (every 15 min)
+  const now    = new Date();
+  const allPts = [], dangerPts = [];
+  for (let h = 0; h <= 24; h += .25) {
+    const d  = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(),
+                                 Math.floor(h), Math.round((h % 1) * 60)));
+    const sp = scSunPos(d, lat, lng);
+    if (sp.altitude >= -3) {
+      const r  = Math.min(R, Math.max(0, (1 - sp.altitude / 90)) * R);
+      const a  = sp.azimuth * Math.PI / 180;
+      const pt = { x: CX + r * Math.sin(a), y: CY - r * Math.cos(a), alt: sp.altitude };
+      allPts.push(pt);
+      if (sp.altitude >= 30) dangerPts.push(pt);
+    }
+  }
+
+  // Full day arc (dashed amber)
+  if (allPts.length > 1) {
+    ctx.beginPath();
+    allPts.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
+    ctx.strokeStyle = 'rgba(184,150,62,.2)';
+    ctx.lineWidth = 1.5; ctx.setLineDash([4, 5]); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // Danger zone arc (red)
+  if (dangerPts.length > 1) {
+    ctx.beginPath();
+    dangerPts.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
+    ctx.strokeStyle = 'rgba(220,60,40,.65)'; ctx.lineWidth = 2.5; ctx.stroke();
+  }
+
+  // Key time markers (sunrise, noon, sunset)
+  if (times) {
+    [{ utc: times.sunrise, col: 'rgba(184,150,62,.75)' },
+     { utc: times.noon,    col: 'rgba(220,60,40,.85)' },
+     { utc: times.sunset,  col: 'rgba(184,150,62,.75)' }].forEach(({ utc, col }) => {
+      const d  = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(),
+                                   Math.floor(utc), Math.round((utc % 1) * 60)));
+      const sp = scSunPos(d, lat, lng);
+      const r  = Math.min(R, Math.max(0, (1 - sp.altitude / 90)) * R);
+      const a  = sp.azimuth * Math.PI / 180;
+      ctx.beginPath(); ctx.arc(CX + r * Math.sin(a), CY - r * Math.cos(a), 3, 0, Math.PI * 2);
+      ctx.fillStyle = col; ctx.fill();
+    });
+  }
+
+  // Current sun
+  const cur = scSunPos(now, lat, lng);
+  if (cur.altitude > -8) {
+    const r       = Math.min(R, Math.max(0, (1 - cur.altitude / 90)) * R);
+    const a       = cur.azimuth * Math.PI / 180;
+    const sx      = CX + r * Math.sin(a);
+    const sy      = CY - r * Math.cos(a);
+    const above   = cur.altitude > 0;
+    const danger  = cur.altitude >= 30;
+    const sunClr  = above ? (danger ? '#e74c3c' : '#f39c12') : 'rgba(184,150,62,.28)';
+    const glowClr = danger ? 'rgba(220,60,40,' : 'rgba(243,156,18,';
+
+    // Pulse ring
+    if (above) {
+      const pR = 7 + (Math.sin(t * .004) + 1) * 2;
+      ctx.beginPath(); ctx.arc(sx, sy, pR, 0, Math.PI * 2);
+      ctx.strokeStyle = glowClr + '.4)'; ctx.lineWidth = 1.2; ctx.stroke();
+    }
+
+    // Glow
+    const glowR = danger ? 18 : 12;
+    const grd   = ctx.createRadialGradient(sx, sy, 0, sx, sy, glowR);
+    grd.addColorStop(0, glowClr + '.45)'); grd.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.beginPath(); ctx.arc(sx, sy, glowR, 0, Math.PI * 2);
+    ctx.fillStyle = grd; ctx.fill();
+
+    // Dot
+    ctx.beginPath(); ctx.arc(sx, sy, 5, 0, Math.PI * 2);
+    ctx.fillStyle = sunClr; ctx.fill();
+  }
+
+  // Zenith dot
+  ctx.beginPath(); ctx.arc(CX, CY, 2, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(197,185,154,.22)'; ctx.fill();
+}
+
+// ── Panel text ───────────────────────────────────────────────────
+function scUpdatePanel(lat, lng) {
+  const now    = new Date();
+  const pos    = scSunPos(now, lat, lng);
+  const uv     = scAltToUV(pos.altitude);
+  const danger = pos.altitude >= 30;
+  const isUp   = pos.altitude > 0;
+  const $      = id => document.getElementById(id);
+
+  // Altitude overlay
+  const altEl = $('sunAltNow');
+  if (altEl) {
+    altEl.textContent = isUp ? `${Math.round(pos.altitude)}°` : '–';
+    altEl.classList.toggle('danger', danger);
+  }
+
+  // Status block
+  const statusEl = $('sunStatus');
+  if (statusEl) statusEl.className = `sun-status ${danger ? 'danger' : isUp ? 'safe' : ''}`;
+  const badge = $('sunStatusBadge');
+  if (badge) badge.textContent = danger ? 'Peak danger window' : isUp ? 'Low UV' : 'Below horizon';
+  const desc = $('sunStatusDesc');
+  if (desc) {
+    if (!isUp)       desc.textContent = 'No UV risk — sun is below the horizon.';
+    else if (danger) desc.textContent = 'SPF required. Reapply every 90 min.';
+    else             desc.textContent = 'UV is low — good time to be outside.';
+  }
+
+  // Stats
+  if ($('sunAlt')) $('sunAlt').textContent = isUp ? `${Math.round(pos.altitude)}°` : 'Below horizon';
+  if ($('sunAz'))  $('sunAz').textContent  = `${Math.round(pos.azimuth)}°`;
+  if ($('sunUV'))  $('sunUV').textContent  = isUp ? `${uv} — ${scUvLabel(uv)}` : '0 — None';
+
+  if (scTimes) {
+    if ($('sunRise')) $('sunRise').textContent = scFmtHM(scTimes.sunrise);
+    if ($('sunNoon')) $('sunNoon').textContent = scFmtHM(scTimes.noon);
+    if ($('sunSet'))  $('sunSet').textContent  = scFmtHM(scTimes.sunset);
+  }
+
+  // Countdown
+  const cdLabel = $('sunCdLabel');
+  const cdEl    = $('sunCountdown');
+  if (cdEl) {
+    if (danger) {
+      const secs = scNextCrossing(lat, lng, true);
+      if (cdLabel) cdLabel.textContent = 'UV drops in';
+      cdEl.textContent = secs ? scFmtCD(Math.round(secs)) : '—';
+    } else if (isUp) {
+      if (cdLabel) cdLabel.textContent = 'UV status';
+      cdEl.textContent = '✓ Safe now';
+    } else {
+      // Count down to sunrise
+      let srMs = null;
+      if (scTimes) {
+        const todayBase = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+        srMs = todayBase + scTimes.sunrise * 3600000;
+        if (srMs < now.getTime()) srMs += 86400000;
+      } else {
+        const secs = scNextCrossing(lat, lng, false);
+        srMs = secs ? now.getTime() + secs * 1000 : null;
+      }
+      if (cdLabel) cdLabel.textContent = 'Sunrise in';
+      cdEl.textContent = srMs ? scFmtCD(Math.round((srMs - now.getTime()) / 1000)) : '—';
+    }
+  }
+}
+
+// ── Animation loop ───────────────────────────────────────────────
+function scTick(ts) {
+  if (!scRunning) return;
+  scDraw(scLat, scLng, scTimes);
+  if (ts - scLastTick > 1000) {
+    scLastTick = ts;
+    scUpdatePanel(scLat, scLng);
+  }
+  scRaf = requestAnimationFrame(scTick);
+}
+
+// ── Init ─────────────────────────────────────────────────────────
+function initSunClock() {
+  const section = document.getElementById('sunClock');
+  if (!section) return;
+
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting && !scRunning) {
+        scRunning = true;
+        scRaf = requestAnimationFrame(scTick);
+      } else if (!e.isIntersecting && scRunning) {
+        scRunning = false;
+        if (scRaf) cancelAnimationFrame(scRaf);
+      }
+    });
+  }, { threshold: 0.08 });
+  obs.observe(section);
+
+  const applyCoords = (lat, lng, label) => {
+    scLat = lat; scLng = lng;
+    scTimes = scSunTimes(new Date(), lat, lng);
+    const locEl = document.getElementById('sunLocLabel');
+    if (locEl) locEl.textContent = label;
+  };
+
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      p => applyCoords(p.coords.latitude, p.coords.longitude,
+                       `${p.coords.latitude.toFixed(2)}°N, ${Math.abs(p.coords.longitude).toFixed(2)}°${p.coords.longitude < 0 ? 'W' : 'E'}`),
+      () => {
+        // Fallback to UV map city from location input
+        const val  = (document.getElementById('locationInput') || {}).value || '';
+        const key  = val.toLowerCase().replace(/,.*/, '').trim();
+        const city = UV_MAP_CITIES.find(c => c.name.toLowerCase().includes(key) || key.includes(c.name.toLowerCase()));
+        if (city) applyCoords(city.lat, city.lon, city.name);
+        else      applyCoords(scLat, scLng, 'San Francisco, CA (default)');
+      }
+    );
+  } else {
+    applyCoords(scLat, scLng, 'San Francisco, CA (default)');
+  }
+}
+
+initSunClock();
