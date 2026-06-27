@@ -683,21 +683,6 @@ input[type=range]::-webkit-slider-thumb {
 .review-name { font-size: .85rem; font-weight: 600; color: var(--forest); }
 .review-role { font-size: .7rem; color: var(--muted); font-weight: 300; }
 
-.reviews-claim {
-  margin-top: 1px; background: var(--clay);
-  display: flex; align-items: stretch;
-}
-.claim-stat {
-  flex: 1; padding: 2rem;
-  display: flex; flex-direction: column; gap: .3rem; align-items: center; text-align: center;
-  background: var(--forest);
-}
-.claim-num {
-  font-family: 'Cormorant Garamond', serif;
-  font-size: 2.5rem; font-weight: 700; letter-spacing: -.03em; color: var(--gold-light);
-}
-.claim-text { font-size: .72rem; color: rgba(248,245,240,.45); max-width: 18ch; line-height: 1.5; font-weight: 300; letter-spacing: .02em; }
-.claim-divider { width: 1px; background: rgba(184,150,62,.15); }
 
 /* ─── Science ───────────────────────────────────────────────────── */
 .science { background: var(--forest); color: var(--cream); padding: 7rem 2rem; }
@@ -1173,6 +1158,17 @@ input[type=range]::-webkit-slider-thumb {
 .camera-error { font-size: .72rem; color: #c0392b; min-height: 1em; }
 .camera-btns { display: flex; gap: .75rem; flex-wrap: wrap; }
 
+/* ─── Scroll reveals ─────────────────────────────────────────────── */
+.reveal {
+  opacity: 0;
+  transform: translateY(32px);
+  transition: opacity .9s cubic-bezier(.16,1,.3,1), transform .9s cubic-bezier(.16,1,.3,1);
+}
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
 /* ─── Custom cursor ──────────────────────────────────────────────── */
 *, *::before, *::after { cursor: none !important; }
 .cursor-dot {
@@ -1230,8 +1226,6 @@ input[type=range]::-webkit-slider-thumb {
   .season-strip { grid-template-columns: repeat(2, 1fr); }
   .reviews-grid { grid-template-columns: 1fr; }
   .review-featured { grid-column: span 1; }
-  .reviews-claim { flex-direction: column; }
-  .claim-divider { width: 100%; height: 1px; align-self: auto; }
   .science-grid { grid-template-columns: 1fr 1fr; }
   .science-item { border-right: none; border-bottom: 1px solid rgba(255,255,255,.08); }
   .spf-timer-widget { grid-template-columns: 1fr; justify-items: center; gap: 2rem; }

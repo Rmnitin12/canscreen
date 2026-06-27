@@ -1672,3 +1672,47 @@ setTimeout(() => {
 
 // Initialize flip card defaults
 updateFlipCards(null);
+
+// ─────────────────────────────────────────────────────────────────
+//  SCROLL REVEAL
+// ─────────────────────────────────────────────────────────────────
+
+(function initReveal() {
+  // Individual elements — labels and headings
+  document.querySelectorAll([
+    '.section-label',
+    'section h2',
+    'section > p',
+    '.hero-badge',
+    '.hero-sub',
+    '.flip-intro',
+    '.pricing-offer',
+  ].join(',')).forEach(el => el.classList.add('reveal'));
+
+  // Grid children — stagger siblings
+  [
+    '.steps-grid',
+    '.reviews-grid',
+    '.flip-cards-grid',
+    '.pricing-grid',
+    '.science-grid',
+  ].forEach(sel => {
+    const grid = document.querySelector(sel);
+    if (!grid) return;
+    [...grid.children].forEach((child, i) => {
+      child.classList.add('reveal');
+      child.style.transitionDelay = `${i * 0.11}s`;
+    });
+  });
+
+  const obs = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.classList.add('visible');
+        obs.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.12 });
+
+  document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
+})();
