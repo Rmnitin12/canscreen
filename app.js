@@ -1458,9 +1458,15 @@ function runUnboxAnimation(spf, formulaId) {
   setTimeout(() => { if (msg) msg.classList.add('visible'); }, 1300);
 }
 
-// Wire up pricing buttons
+// Pricing card flip
+document.querySelectorAll('.plan-wrap').forEach(card => {
+  card.addEventListener('click', () => card.classList.toggle('flipped'));
+});
+
+// Subscribe buttons: trigger unbox without re-flipping the card
 document.querySelectorAll('.plan-subscribe').forEach(btn => {
-  btn.addEventListener('click', () => {
+  btn.addEventListener('click', e => {
+    e.stopPropagation();
     const spf = btn.dataset.spf || '50';
     const fid = 'CS-' + Math.floor(Math.random()*9000+1000);
     runUnboxAnimation(spf, fid);
