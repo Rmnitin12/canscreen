@@ -1023,6 +1023,28 @@
           <canvas id="lsCanvas" width="400" height="530"></canvas>
         </div>
         <p class="ls-cam-hint">Centre your face within the dashed guide</p>
+
+        <!-- Mode toggle bar -->
+        <div class="ls-mode-bar">
+          <button class="ls-mode-btn active" data-mode="scan">◆ Scan</button>
+          <button class="ls-mode-btn" data-mode="uv">⚡ UV Damage</button>
+          <button class="ls-mode-btn" data-mode="tint">◈ Tint Try-On</button>
+        </div>
+
+        <!-- Tint controls — visible only in tint mode -->
+        <div class="ls-tint-panel" id="lsTintPanel">
+          <div class="ls-tint-chips">
+            <button class="ls-tint-chip" data-tone="warm">Warm</button>
+            <button class="ls-tint-chip active" data-tone="neutral">Neutral</button>
+            <button class="ls-tint-chip" data-tone="cool">Cool</button>
+          </div>
+          <div class="ls-cov-row">
+            <span class="ls-cov-label">Coverage</span>
+            <input type="range" class="ls-cov-slider" id="lsCovSlider" min="1" max="4" step="1" value="2" />
+            <span class="ls-cov-val" id="lsCovVal">Light</span>
+          </div>
+        </div>
+
         <p class="ls-error" id="lsError"></p>
       </div>
 

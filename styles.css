@@ -1477,6 +1477,69 @@ input[type=range]::-webkit-slider-thumb {
 }
 .ls-cancel-btn { width: 100%; justify-content: center; font-size: .72rem; }
 
+/* Mode bar */
+.ls-mode-bar {
+  display: flex; gap: 1px; margin-top: .7rem;
+  width: 100%; max-width: 340px;
+  background: rgba(255,255,255,.05);
+  border: 1px solid rgba(255,255,255,.08);
+}
+.ls-mode-btn {
+  flex: 1; background: none; border: none; cursor: pointer;
+  font-family: 'Jost', sans-serif; font-size: .58rem;
+  font-weight: 600; letter-spacing: .09em; text-transform: uppercase;
+  color: rgba(255,255,255,.32); padding: .52rem .2rem;
+  transition: background .15s, color .15s;
+}
+.ls-mode-btn.active { background: rgba(184,150,62,.14); color: var(--gold); }
+.ls-mode-btn:hover:not(.active) {
+  background: rgba(255,255,255,.06); color: rgba(255,255,255,.65);
+}
+
+/* Tint controls panel */
+.ls-tint-panel {
+  display: none; flex-direction: column; gap: .6rem;
+  width: 100%; max-width: 340px; margin-top: .6rem;
+  padding: .7rem .85rem;
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.07);
+}
+.ls-tint-panel.visible { display: flex; }
+.ls-tint-chips { display: flex; gap: 1px; }
+.ls-tint-chip {
+  flex: 1; padding: .38rem;
+  background: none; border: 1px solid rgba(255,255,255,.08); cursor: pointer;
+  font-family: 'Jost', sans-serif; font-size: .6rem;
+  font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+  color: rgba(255,255,255,.32); transition: background .15s, color .15s, border-color .15s;
+}
+.ls-tint-chip.active {
+  background: rgba(184,150,62,.12); color: var(--gold); border-color: rgba(184,150,62,.4);
+}
+.ls-cov-row {
+  display: flex; align-items: center; gap: .65rem;
+}
+.ls-cov-label {
+  font-size: .58rem; font-weight: 600; letter-spacing: .1em;
+  text-transform: uppercase; color: rgba(255,255,255,.26); white-space: nowrap;
+}
+.ls-cov-val {
+  font-size: .62rem; font-weight: 600; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--gold); min-width: 58px;
+}
+.ls-cov-slider {
+  flex: 1; appearance: none; height: 2px;
+  background: rgba(255,255,255,.14); outline: none; cursor: pointer; border-radius: 0;
+}
+.ls-cov-slider::-webkit-slider-thumb {
+  appearance: none; width: 11px; height: 11px;
+  background: var(--gold); border-radius: 0; cursor: pointer;
+}
+.ls-cov-slider::-moz-range-thumb {
+  width: 11px; height: 11px; background: var(--gold);
+  border: none; border-radius: 0; cursor: pointer;
+}
+
 /* ─── Responsive ────────────────────────────────────────────────── */
 @media (max-width: 760px) {
   .ls-modal { grid-template-columns: 1fr; }

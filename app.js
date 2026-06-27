@@ -1726,6 +1726,17 @@ let lsRaf      = null;
 let lsSamples  = [];       // rolling 90-frame window of {type,num,val,r,g,b}
 let lsUvIdx    = 7;
 let lsLastRead = null;
+let lsViewMode = 'scan';   // 'scan' | 'uv' | 'tint'
+let lsTintTone = 'neutral';
+let lsCovLevel = 2;        // 1=sheer 2=light 3=medium 4=buildable
+
+const LS_TINT_COLORS = {
+  warm:    { r: 226, g: 162, b: 112 },
+  neutral: { r: 208, g: 150, b: 110 },
+  cool:    { r: 194, g: 146, b: 140 },
+};
+const LS_COV_ALPHA = { 1: 0.13, 2: 0.24, 3: 0.35, 4: 0.46 };
+const LS_COV_NAMES = { 1: 'Sheer', 2: 'Light', 3: 'Medium', 4: 'Buildable' };
 
 // Face UV-exposure risk zones — cx/cy/rx/ry as fractions of canvas W/H
 const LS_ZONES = [
@@ -1793,10 +1804,17 @@ function lsUpdateReadout() {
   }
 
   const subEl = $('lsSpfSub');
-  if (subEl) subEl.textContent =
-    conf >= 90 ? '◆ Profile ready to lock'
-    : conf >= 50 ? 'Hold steady for best accuracy'
-    : 'Reading your skin…';
+  if (subEl) {
+    if (lsViewMode === 'uv') {
+      subEl.textContent = 'Dark patches = melanin · Violet = healthy skin';
+    } else if (lsViewMode === 'tint') {
+      subEl.textContent = `${LS_COV_NAMES[lsCovLevel]} coverage · ${lsTintTone} tone`;
+    } else {
+      subEl.textContent = conf >= 90 ? '◆ Profile ready to lock'
+        : conf >= 50 ? 'Hold steady for best accuracy'
+        : 'Reading your skin…';
+    }
+  }
 
   const fEl = $('lsFitzVal');
   if (fEl) fEl.textContent = `Type ${fitzType}`;
@@ -1827,98 +1845,130 @@ function lsDrawFrame() {
   const ctx = canvas.getContext('2d');
   const W = canvas.width, H = canvas.height;
   const t = Date.now();
+  const pulse = (Math.sin(t * 0.0024) + 1) * 0.5;
 
-  // 1. Draw mirrored video frame (selfie-cam feel)
+  // Shared guide ellipse coords
+  const GX = W / 2, GY = H * .466, GRX = W * .275, GRY = H * .368;
+
+  // ── 1. Draw mirrored video with mode-specific filter ──────────────
+  ctx.filter = lsViewMode === 'uv'
+    ? 'grayscale(1) contrast(2.3) sepia(0.9) hue-rotate(212deg) saturate(2.6) brightness(0.76)'
+    : 'none';
   ctx.save();
   ctx.translate(W, 0);
   ctx.scale(-1, 1);
   ctx.drawImage(video, 0, 0, W, H);
   ctx.restore();
+  ctx.filter = 'none';
 
-  // 2. UV heatmap zone overlays — amber elliptical gradients, pulsing with UV intensity
-  const uvFactor = Math.min(1, lsUvIdx / 12);
-  const pulse    = (Math.sin(t * 0.0024) + 1) * 0.5; // 0→1 over ~2.6s
-
-  LS_ZONES.forEach(z => {
-    const cx = z.cx * W, cy = z.cy * H;
-    const rx = z.rx * W, ry = z.ry * H;
-    const alpha = z.risk * uvFactor * (0.30 + pulse * 0.22);
-
-    ctx.save();
-    ctx.translate(cx, cy);
-    ctx.scale(1, ry / rx);
-    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, rx);
-    g.addColorStop(0,    `rgba(228, 88, 18, ${Math.min(.72, alpha * 1.5).toFixed(3)})`);
-    g.addColorStop(0.55, `rgba(205, 62,  8, ${(alpha * .6).toFixed(3)})`);
-    g.addColorStop(1,    'rgba(185, 45, 0, 0)');
-    ctx.beginPath();
-    ctx.arc(0, 0, rx, 0, Math.PI * 2);
-    ctx.fillStyle = g;
-    ctx.fill();
-    ctx.restore();
-  });
-
-  // 3. Face guide ellipse — dashed gold ring
-  const gx = W / 2, gy = H * .466;
-  const grx = W * .275, gry = H * .368;
-  ctx.beginPath();
-  ctx.ellipse(gx, gy, grx, gry, 0, 0, Math.PI * 2);
-  ctx.strokeStyle = `rgba(184,150,62,${(.42 + pulse * .32).toFixed(2)})`;
-  ctx.lineWidth = 1.5;
-  ctx.setLineDash([10, 6]);
-  ctx.stroke();
-  ctx.setLineDash([]);
-
-  // Diamond markers at cardinal points of the ellipse
-  [[gx, gy - gry], [gx, gy + gry], [gx - grx, gy], [gx + grx, gy]].forEach(([dx, dy]) => {
-    ctx.beginPath();
-    ctx.arc(dx, dy, 2.8, 0, Math.PI * 2);
-    ctx.fillStyle = `rgba(184,150,62,${(.55 + pulse * .35).toFixed(2)})`;
-    ctx.fill();
-  });
-
-  // 4. Horizontal scan line sweeping top → bottom
-  const scanY = ((t * 0.095) % (H * 1.55)) - H * 0.28;
-  if (scanY > -20 && scanY < H + 20) {
-    const sg = ctx.createLinearGradient(0, scanY - 14, 0, scanY + 14);
-    sg.addColorStop(0,    'rgba(184,150,62,0)');
-    sg.addColorStop(0.5,  'rgba(184,150,62,.32)');
-    sg.addColorStop(1,    'rgba(184,150,62,0)');
-    ctx.fillStyle = sg;
-    ctx.fillRect(0, scanY - 14, W, 28);
-  }
-
-  // 5. Sample pixels from three face zones (symmetric — mirroring doesn't matter)
-  const SP = 14;
-  const sampleAt = (fx, fy) => {
-    const sx = Math.round(fx * W), sy = Math.round(fy * H);
-    const ox = Math.max(SP, Math.min(W - SP, sx));
-    const oy = Math.max(SP, Math.min(H - SP, sy));
-    try { return ctx.getImageData(ox - SP, oy - SP, SP * 2, SP * 2).data; }
-    catch (_) { return null; }
-  };
-
-  const zones = [
-    sampleAt(.50, .22), // forehead center
-    sampleAt(.35, .53), // left on screen → right cheek in real life
-    sampleAt(.65, .53), // right on screen → left cheek
-  ];
-
-  let rT = 0, gT = 0, bT = 0, cnt = 0;
-  zones.forEach(data => {
-    if (!data) return;
-    for (let i = 0; i < data.length; i += 4) {
-      rT += data[i]; gT += data[i + 1]; bT += data[i + 2]; cnt++;
+  // ── 2. Mode-specific overlays ─────────────────────────────────────
+  if (lsViewMode === 'scan') {
+    // Amber heatmap zones pulsing with UV intensity
+    const uvFactor = Math.min(1, lsUvIdx / 12);
+    LS_ZONES.forEach(z => {
+      const cx = z.cx * W, cy = z.cy * H, rx = z.rx * W, ry = z.ry * H;
+      const alpha = z.risk * uvFactor * (0.30 + pulse * 0.22);
+      ctx.save();
+      ctx.translate(cx, cy); ctx.scale(1, ry / rx);
+      const g = ctx.createRadialGradient(0, 0, 0, 0, 0, rx);
+      g.addColorStop(0,    `rgba(228,88,18,${Math.min(.72, alpha*1.5).toFixed(3)})`);
+      g.addColorStop(0.55, `rgba(205,62,8,${(alpha*.6).toFixed(3)})`);
+      g.addColorStop(1,    'rgba(185,45,0,0)');
+      ctx.beginPath(); ctx.arc(0, 0, rx, 0, Math.PI*2);
+      ctx.fillStyle = g; ctx.fill(); ctx.restore();
+    });
+    // Gold scan line
+    const scanY = ((t * 0.095) % (H * 1.55)) - H * 0.28;
+    if (scanY > -20 && scanY < H + 20) {
+      const sg = ctx.createLinearGradient(0, scanY-14, 0, scanY+14);
+      sg.addColorStop(0, 'rgba(184,150,62,0)');
+      sg.addColorStop(.5, 'rgba(184,150,62,.32)');
+      sg.addColorStop(1, 'rgba(184,150,62,0)');
+      ctx.fillStyle = sg; ctx.fillRect(0, scanY-14, W, 28);
     }
+
+  } else if (lsViewMode === 'uv') {
+    // Scanlines — medical-device texture
+    ctx.fillStyle = 'rgba(0,0,80,0.038)';
+    for (let y = 0; y < H; y += 3) ctx.fillRect(0, y, W, 1.5);
+    // Vignette
+    const vig = ctx.createRadialGradient(GX, GY, H*.18, GX, GY, H*.74);
+    vig.addColorStop(0, 'rgba(0,0,0,0)');
+    vig.addColorStop(1, 'rgba(0,0,50,0.52)');
+    ctx.fillStyle = vig; ctx.fillRect(0, 0, W, H);
+    // Badge
+    ctx.fillStyle = 'rgba(8,0,36,0.78)';
+    ctx.fillRect(8, 8, 152, 30);
+    ctx.fillStyle = '#c0b0ff';
+    ctx.font = '600 9px Jost,sans-serif';
+    ctx.fillText('⚡ UV DAMAGE ANALYSIS', 14, 27);
+
+  } else if (lsViewMode === 'tint') {
+    // Tinted SPF overlay on face zone — radial gradient ellipse
+    const tc = LS_TINT_COLORS[lsTintTone];
+    const al = LS_COV_ALPHA[lsCovLevel];
+    ctx.save();
+    ctx.translate(GX, GY); ctx.scale(1, GRY / GRX);
+    const tg = ctx.createRadialGradient(0, 0, 0, 0, 0, GRX * 1.06);
+    tg.addColorStop(0,    `rgba(${tc.r},${tc.g},${tc.b},${(al*1.12).toFixed(3)})`);
+    tg.addColorStop(0.62, `rgba(${tc.r},${tc.g},${tc.b},${(al*.88).toFixed(3)})`);
+    tg.addColorStop(0.88, `rgba(${tc.r},${tc.g},${tc.b},${(al*.22).toFixed(3)})`);
+    tg.addColorStop(1,    `rgba(${tc.r},${tc.g},${tc.b},0)`);
+    ctx.beginPath(); ctx.arc(0, 0, GRX*1.06, 0, Math.PI*2);
+    ctx.fillStyle = tg; ctx.fill(); ctx.restore();
+    // Subtle highlight shimmer along top of ellipse (finish effect)
+    ctx.save();
+    ctx.translate(GX, GY - GRY * 0.28); ctx.scale(GRX * 0.55, GRY * 0.18);
+    const shine = ctx.createRadialGradient(0, 0, 0, 0, 0, 1);
+    shine.addColorStop(0, `rgba(255,255,255,${(al*.32).toFixed(3)})`);
+    shine.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.beginPath(); ctx.arc(0, 0, 1, 0, Math.PI*2);
+    ctx.fillStyle = shine; ctx.fill(); ctx.restore();
+    // Badge
+    ctx.fillStyle = 'rgba(8,5,2,0.74)';
+    ctx.fillRect(8, 8, 178, 30);
+    ctx.fillStyle = `rgb(${tc.r},${tc.g},${tc.b})`;
+    ctx.font = '600 9px Jost,sans-serif';
+    ctx.fillText(`◈ TINT · ${lsTintTone.toUpperCase()} · ${LS_COV_NAMES[lsCovLevel].toUpperCase()}`, 14, 27);
+  }
+
+  // ── 3. Face guide ellipse (always — color shifts by mode) ─────────
+  const guideCol = lsViewMode === 'uv'
+    ? `rgba(160,128,255,${(.38+pulse*.3).toFixed(2)})`
+    : lsViewMode === 'tint'
+      ? `rgba(210,168,138,${(.38+pulse*.3).toFixed(2)})`
+      : `rgba(184,150,62,${(.42+pulse*.32).toFixed(2)})`;
+  ctx.beginPath();
+  ctx.ellipse(GX, GY, GRX, GRY, 0, 0, Math.PI*2);
+  ctx.strokeStyle = guideCol; ctx.lineWidth = 1.5;
+  ctx.setLineDash([10, 6]); ctx.stroke(); ctx.setLineDash([]);
+  [[GX, GY-GRY],[GX, GY+GRY],[GX-GRX, GY],[GX+GRX, GY]].forEach(([dx,dy]) => {
+    ctx.beginPath(); ctx.arc(dx, dy, 2.8, 0, Math.PI*2);
+    ctx.fillStyle = guideCol; ctx.fill();
   });
 
-  if (cnt > 0) {
-    const r = Math.round(rT / cnt), g = Math.round(gT / cnt), b = Math.round(bT / cnt);
-    const fitz = lsPixelToFitz(r, g, b);
-    lsSamples.push({ ...fitz, r, g, b });
-    if (lsSamples.length > 90) lsSamples.shift();
-    lsUpdateReadout();
+  // ── 4. Pixel sampling — scan mode only (UV/tint filters corrupt readings) ──
+  if (lsViewMode === 'scan') {
+    const SP = 14;
+    const sampleAt = (fx, fy) => {
+      const ox = Math.max(SP, Math.min(W-SP, Math.round(fx*W)));
+      const oy = Math.max(SP, Math.min(H-SP, Math.round(fy*H)));
+      try { return ctx.getImageData(ox-SP, oy-SP, SP*2, SP*2).data; } catch { return null; }
+    };
+    let rT=0, gT=0, bT=0, cnt=0;
+    [sampleAt(.5,.22), sampleAt(.35,.53), sampleAt(.65,.53)].forEach(data => {
+      if (!data) return;
+      for (let i=0; i<data.length; i+=4) { rT+=data[i]; gT+=data[i+1]; bT+=data[i+2]; cnt++; }
+    });
+    if (cnt > 0) {
+      const r=Math.round(rT/cnt), g=Math.round(gT/cnt), b=Math.round(bT/cnt);
+      const fitz = lsPixelToFitz(r, g, b);
+      lsSamples.push({...fitz, r, g, b});
+      if (lsSamples.length > 90) lsSamples.shift();
+    }
   }
+  // Always refresh readout (mode-specific sub-text handled inside)
+  if (lsSamples.length) lsUpdateReadout();
 
   lsRaf = requestAnimationFrame(lsDrawFrame);
 }
@@ -1929,6 +1979,12 @@ async function openLiveScan() {
 
   lsSamples  = [];
   lsLastRead = null;
+  lsViewMode = 'scan';
+
+  // Reset mode bar UI
+  document.querySelectorAll('.ls-mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === 'scan'));
+  const tp = document.getElementById('lsTintPanel');
+  if (tp) tp.classList.remove('visible');
 
   // Seed UV from location input
   const locVal = document.getElementById('locationInput')?.value || 'San Francisco, CA';
@@ -2052,6 +2108,38 @@ document.getElementById('lsLockBtn')?.addEventListener('click', lsLockProfile);
 document.getElementById('lsOverlay')?.addEventListener('click', e => {
   if (e.target === document.getElementById('lsOverlay')) closeLiveScan();
 });
+
+// Mode bar toggle
+document.querySelectorAll('.ls-mode-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    lsViewMode = btn.dataset.mode;
+    document.querySelectorAll('.ls-mode-btn').forEach(b => b.classList.toggle('active', b === btn));
+    const tp = document.getElementById('lsTintPanel');
+    if (tp) tp.classList.toggle('visible', lsViewMode === 'tint');
+    // Refresh sub-text immediately
+    if (lsSamples.length) lsUpdateReadout();
+  });
+});
+
+// Tint tone chips
+document.querySelectorAll('.ls-tint-chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    lsTintTone = chip.dataset.tone;
+    document.querySelectorAll('.ls-tint-chip').forEach(c => c.classList.toggle('active', c === chip));
+    if (lsSamples.length) lsUpdateReadout();
+  });
+});
+
+// Coverage slider
+const lsCovSlider = document.getElementById('lsCovSlider');
+const lsCovValEl  = document.getElementById('lsCovVal');
+if (lsCovSlider) {
+  lsCovSlider.addEventListener('input', () => {
+    lsCovLevel = +lsCovSlider.value;
+    if (lsCovValEl) lsCovValEl.textContent = LS_COV_NAMES[lsCovLevel];
+    if (lsSamples.length) lsUpdateReadout();
+  });
+}
 
 /* ─── FAQ accordion ─────────────────────────────────────────────── */
 document.querySelectorAll('.faq-q').forEach(btn => {
