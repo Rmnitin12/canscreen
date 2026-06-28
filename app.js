@@ -940,43 +940,6 @@ document.querySelector('[data-group="undertone"]').querySelectorAll('.chip')
   .forEach(c => c.addEventListener('click', () => setTimeout(updateFacePreviews, 60)));
 updateFacePreviews();
 
-// ═══════════════════════════════════════════════════════════════
-//  CUSTOM SUN CURSOR
-// ═══════════════════════════════════════════════════════════════
-
-const cursorDot  = document.getElementById('cursorDot');
-const cursorGlow = document.getElementById('cursorGlow');
-// dot tracks mouse exactly; glow lerps behind
-let tx = window.innerWidth / 2, ty = window.innerHeight / 2;
-let gx = tx, gy = ty;
-let cursorReady = false;
-
-document.addEventListener('mousemove', e => {
-  tx = e.clientX; ty = e.clientY;
-  if (!cursorReady) {
-    gx = tx; gy = ty;
-    cursorReady = true;
-    if (cursorDot)  { cursorDot.style.opacity  = '1'; }
-    if (cursorGlow) { cursorGlow.style.opacity  = '1'; }
-  }
-  if (cursorDot) { cursorDot.style.left = tx + 'px'; cursorDot.style.top = ty + 'px'; }
-}, { passive: true });
-
-(function animateGlow() {
-  gx += (tx - gx) * 0.1;
-  gy += (ty - gy) * 0.1;
-  if (cursorGlow) {
-    cursorGlow.style.left = gx + 'px';
-    cursorGlow.style.top  = gy + 'px';
-  }
-  requestAnimationFrame(animateGlow);
-})();
-
-document.addEventListener('mouseover', e => {
-  const interactive = e.target.closest('button,a,input,label,.chip,.fitz-swatch,.option-toggle,.drop-zone');
-  cursorDot  && cursorDot.classList.toggle('hovering',  !!interactive);
-  cursorGlow && cursorGlow.classList.toggle('hovering', !!interactive);
-});
 
 // ═══════════════════════════════════════════════════════════════
 //  FEATURE 2 — UV DANGER MAP
